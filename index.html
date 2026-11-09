@@ -111,6 +111,12 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 @keyframes sh{25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
 .row{display:flex;gap:8px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-top:14px}
 .msg{font-size:16px;font-weight:700;min-height:24px}
+.ai-box{margin:12px 0;padding:12px 14px;border-radius:16px;border:2px dashed var(--teal);background:rgba(79,179,196,.08)}
+.ai-box .ai-title{font-size:13px;font-weight:900;color:var(--teal);margin:0 0 6px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ai-box .ai-text{font-size:14px;line-height:1.55;font-weight:700;color:var(--ink);margin:0 0 8px;word-break:break-word}
+.ai-box .ai-tip{font-size:12px;color:var(--muted);font-weight:700;margin:0}
+.ai-box .btn.copy{padding:7px 14px;font-size:13px;box-shadow:none}
+.ai-box .btn.copy.ok{background:var(--ok)}
 textarea,input[type=file]{width:100%;font:inherit;font-size:15px;padding:10px;border-radius:14px;border:2px solid var(--line);background:transparent;color:var(--ink)}
 input[type=file]::file-selector-button{font:inherit;font-weight:700;border:0;border-radius:999px;background:var(--ink);color:var(--panel);padding:6px 14px;margin-right:10px}
 textarea{height:110px;resize:vertical}
@@ -186,15 +192,25 @@ textarea{height:110px;resize:vertical}
 
 <div class="ov" id="to"><div class="card">
   <h2>老師教材區</h2>
-  <p style="font-size:15px">上傳教材 PDF，AI 會自動分成章節與題目，並分配到各個島嶼。</p>
-  <input type="file" id="pdf" accept="application/pdf" aria-label="上傳教材 PDF">
-  <p style="font-size:14px;margin:8px 0 6px">或直接貼上教材文字：</p>
-  <textarea id="txt" placeholder="貼上教材內容…" aria-label="教材文字"></textarea>
+  <p style="font-size:15px;line-height:1.6"><b>GitHub Pages 分享給全班：</b>教材若只存在你的瀏覽器，學生看不到。請載入後按「下載 lesson.md」，把檔案放到網站資料夾並推上 GitHub；全班開啟同一網址就會讀到同一套島嶼。</p>
+  <p style="font-size:14px;margin:10px 0 4px;font-weight:900">① 複製提示詞 → 到 Grok / Gemini 轉教材</p>
+  <div class="ai-box" id="teacherPromptBox">
+    <div class="ai-title"><span>提示詞</span><button type="button" class="btn copy" id="copyPrompt">複製提示詞</button></div>
+    <p class="ai-text" id="teacherPromptText" style="white-space:pre-wrap;font-size:12px;max-height:120px;overflow:auto"></p>
+  </div>
+  <p style="font-size:14px;margin:10px 0 4px;font-weight:900">② 貼上 Markdown（或上傳 .md）並載入</p>
+  <input type="file" id="mdfile" accept=".md,text/markdown,text/plain" aria-label="上傳 Markdown 檔">
+  <textarea id="txt" placeholder="在此貼上 Markdown…" aria-label="教材 Markdown" style="margin-top:8px;min-height:140px"></textarea>
   <div class="row">
-    <button class="btn" id="gen">✨ AI 產生島嶼</button>
+    <button class="btn" id="loadMd">載入成島嶼</button>
+    <button class="btn alt" id="dlMd">下載 lesson.md</button>
+    <button class="btn alt" id="dlJson">下載 lesson.json</button>
+  </div>
+  <div class="row">
     <button class="btn alt" id="demo">載入範例</button>
     <button class="btn alt" id="rst">重設星星</button>
     <button class="btn alt" id="tc">關閉</button>
+    <button class="btn alt" id="gen">舊版本頁 AI</button>
   </div>
   <div class="msg" id="tm" role="status"></div>
 </div></div>
@@ -294,18 +310,56 @@ textarea{height:110px;resize:vertical}
 const $=s=>document.querySelector(s);
 let lesson=null,stars=[];
 const DEMO={title:"太陽系",chapters:[
-{title:"太陽與行星",summary:"太陽是太陽系的中心，它會發光發熱。八大行星繞著太陽轉動，地球是離太陽第三近的行星。",questions:[
-{q:"太陽系的中心是什麼？",options:["地球","太陽","月亮","火星"],answer:1,explain:"太陽在中心，行星繞著它轉。"},
-{q:"地球是離太陽第幾近的行星？",options:["第一","第二","第三","第四"],answer:2,explain:"依序是水星、金星、地球。"}]},
-{title:"月亮的秘密",summary:"月亮是地球的衛星，繞著地球轉。月亮本身不會發光，我們看到的月光是反射太陽的光。",questions:[
-{q:"月亮繞著哪一個星球轉？",options:["太陽","火星","地球","金星"],answer:2,explain:"月亮是地球的衛星。"},
-{q:"月光是怎麼來的？",options:["月亮自己發光","反射太陽光","星星的光","燈光"],answer:1,explain:"月亮反射太陽的光。"}]},
-{title:"晝夜變化",summary:"地球會自轉，轉一圈大約是一天。面向太陽的地方是白天，背向太陽的地方是黑夜。",questions:[
-{q:"地球自轉一圈大約多久？",options:["一小時","一天","一個月","一年"],answer:1,explain:"自轉一圈約一天，所以有白天和黑夜。"}]}]};
+{title:"太陽與行星",summary:"太陽是太陽系的中心，它會發光發熱。八大行星繞著太陽轉動，地球是離太陽第三近的行星。",aiAsk:"我是國小生。請用簡單的話說明：太陽系的中心是什麼？八大行星離太陽由近到遠大概是誰？不要告訴我考題答案。",questions:[
+{q:"太陽系的中心是什麼？",options:["地球","太陽","月亮","火星"],answer:1,explain:"太陽在中心，行星繞著它轉。",aiAsk:"我是國小生。太陽系的中心是什麼？它有什麼特別的地方？用兩句話說明，不要直接說選擇題答案。"},
+{q:"地球是離太陽第幾近的行星？",options:["第一","第二","第三","第四"],answer:2,explain:"依序是水星、金星、地球。",aiAsk:"我是國小生。請依序說出離太陽最近的前四顆行星名稱，不要告訴我某一題要選哪個。"}]},
+{title:"月亮的秘密",summary:"月亮是地球的衛星，繞著地球轉。月亮本身不會發光，我們看到的月光是反射太陽的光。",aiAsk:"我是國小生。月亮是什麼？它會自己發光嗎？月光是怎麼來的？請用簡單的話說。",questions:[
+{q:"月亮繞著哪一個星球轉？",options:["太陽","火星","地球","金星"],answer:2,explain:"月亮是地球的衛星。",aiAsk:"我是國小生。什麼是衛星？月亮繞著哪一顆星球轉？用國小程度說明。"},
+{q:"月光是怎麼來的？",options:["月亮自己發光","反射太陽光","星星的光","燈光"],answer:1,explain:"月亮反射太陽的光。",aiAsk:"我是國小生。月亮自己會發光嗎？我們看到的月光是怎麼來的？請解釋原因。"}]},
+{title:"晝夜變化",summary:"地球會自轉，轉一圈大約是一天。面向太陽的地方是白天，背向太陽的地方是黑夜。",aiAsk:"我是國小生。為什麼會有白天和黑夜？和地球的轉動有什麼關係？請用簡單的話說明。",questions:[
+{q:"地球自轉一圈大約多久？",options:["一小時","一天","一個月","一年"],answer:1,explain:"自轉一圈約一天，所以有白天和黑夜。",aiAsk:"我是國小生。地球自轉是什麼意思？自轉一圈大約要多久？不要直接給選擇題答案。"}]}]};
 function save(){try{localStorage.setItem('isl1',JSON.stringify({lesson,stars}))}catch(e){}}
+function saveStars(){try{localStorage.setItem('isl_stars',JSON.stringify(stars))}catch(e){}}
 try{const d=JSON.parse(localStorage.getItem('isl1')||'null');if(d&&d.lesson){lesson=d.lesson;stars=d.stars||[]}}catch(e){}
-if(!lesson){lesson=DEMO;stars=[]}
+try{const s=JSON.parse(localStorage.getItem('isl_stars')||'null');if(Array.isArray(s))stars=s}catch(e){}
+// lesson 最終以站上 lesson.md / lesson.json 為準（見 boot），此處僅作預覽備援
+if(!lesson){lesson=DEMO;if(!stars.length)stars=[]}
 function esc(s){return String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function defaultAiAsk(text){
+  const t=String(text||'').replace(/\s+/g,' ').trim().slice(0,80);
+  return `我是國小生。請用簡單的話解釋和「${t}」有關的知識，幫我理解概念。不要直接告訴我選擇題要選哪一個。`;
+}
+function getAiAsk(q,ch){
+  if(q&&q.aiAsk)return q.aiAsk;
+  if(ch&&ch.aiAsk)return ch.aiAsk;
+  return defaultAiAsk(q&&q.q||ch&&ch.title||'');
+}
+function aiBoxHtml(prompt,id){
+  return `<div class="ai-box" id="${id||''}">
+    <div class="ai-title"><span>🤖 複製去問 AI</span><button type="button" class="btn copy" data-copy>複製問句</button></div>
+    <p class="ai-text">${esc(prompt)}</p>
+    <p class="ai-tip">貼到 Gemini 等 AI → 看懂後再自己作答（不要問「答案是哪個」）</p>
+  </div>`;
+}
+function bindCopy(root){
+  (root||document).querySelectorAll('[data-copy]').forEach(btn=>{
+    btn.onclick=async()=>{
+      const box=btn.closest('.ai-box');
+      const text=box?box.querySelector('.ai-text')?.textContent||'':'';
+      try{
+        await navigator.clipboard.writeText(text);
+        btn.textContent='已複製 ✓';btn.classList.add('ok');
+        setTimeout(()=>{btn.textContent='複製問句';btn.classList.remove('ok')},1500);
+      }catch(e){
+        // fallback
+        const ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();
+        try{document.execCommand('copy');btn.textContent='已複製 ✓';btn.classList.add('ok')}catch(e2){btn.textContent='請手動複製'}
+        ta.remove();
+        setTimeout(()=>{btn.textContent='複製問句';btn.classList.remove('ok')},1500);
+      }
+    };
+  });
+}
 
 /* ---------- 時段 ---------- */
 const C=h=>new THREE.Color(h);
@@ -694,16 +748,27 @@ let cur=0,qi=0;
 function openIsland(i){cur=i;qi=-1;closeList();$('#qo').classList.add('on');renderQ();if(typeof mpVisit==='function')mpVisit(i)}
 function renderQ(){
   const ch=lesson.chapters[cur],n=ch.questions.length,c=$('#qc');
-  if(qi<0){c.innerHTML=`<span class="chip">第 ${String(cur+1).padStart(2,'0')} 島</span><h2>${esc(ch.title)}</h2><p>${esc(ch.summary)}</p>${stars[cur]?'<p>⭐ 你已經拿到這座島的星星囉！</p>':''}<div class="row"><button class="btn alt" id="x">離開</button><button class="btn" id="go">開始挑戰 ➜</button></div>`;
-    $('#x').onclick=closeQ;$('#go').onclick=()=>{qi=0;renderQ()};return}
+  if(qi<0){
+    const chapAsk=getAiAsk(null,ch);
+    c.innerHTML=`<span class="chip">第 ${String(cur+1).padStart(2,'0')} 島</span><h2>${esc(ch.title)}</h2><p>${esc(ch.summary)}</p>
+      ${aiBoxHtml(chapAsk,'ai-chap')}
+      ${stars[cur]?'<p>⭐ 你已經拿到這座島的星星囉！</p>':''}
+      <div class="row"><button class="btn alt" id="x">離開</button><button class="btn" id="go">開始挑戰 ➜</button></div>`;
+    $('#x').onclick=closeQ;$('#go').onclick=()=>{qi=0;renderQ()};bindCopy(c);return}
   const q=ch.questions[qi];
-  c.innerHTML=`<div class="prog"><i style="width:${qi/n*100}%"></i></div><span class="chip">${esc(ch.title)}　${qi+1} / ${n}</span><p>${esc(q.q)}</p>`+q.options.map((o,k)=>`<button class="opt" data-k="${k}"><span class="k">${'ABCD'[k]||k+1}</span><span>${esc(o)}</span></button>`).join('')+`<div class="msg" id="m" role="status"></div><div class="row"><button class="btn alt" id="x">離開</button><button class="btn" id="nx" style="display:none"></button></div>`;
-  $('#x').onclick=closeQ;
+  const ask=getAiAsk(q,ch);
+  c.innerHTML=`<div class="prog"><i style="width:${qi/n*100}%"></i></div><span class="chip">${esc(ch.title)}　${qi+1} / ${n}</span>
+    <p>${esc(q.q)}</p>
+    ${aiBoxHtml(ask,'ai-q')}
+    `+q.options.map((o,k)=>`<button class="opt" data-k="${k}"><span class="k">${'ABCD'[k]||k+1}</span><span>${esc(o)}</span></button>`).join('')+`
+    <div class="msg" id="m" role="status"></div>
+    <div class="row"><button class="btn alt" id="x">離開</button><button class="btn" id="nx" style="display:none"></button></div>`;
+  $('#x').onclick=closeQ;bindCopy(c);
   c.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
     const k=+b.dataset.k;
     if(k===q.answer){b.classList.add('ok');c.querySelectorAll('.opt').forEach(o=>o.disabled=true);$('#m').textContent='🎉 答對了！'+(q.explain||'');
       const nx=$('#nx');nx.style.display='';nx.textContent=qi<n-1?'下一題 ➜':'拿星星 ⭐';nx.onclick=()=>{if(qi<n-1){qi++;renderQ()}else finish()}}
-    else{b.classList.add('bad');b.disabled=true;$('#m').textContent='💪 再想想看，再試一次！'}});
+    else{b.classList.add('bad');b.disabled=true;$('#m').textContent='💪 再想想看，再試一次！也可先複製上方問句去問 AI。'}});
 }
 function finish(){
   const first=!stars[cur];stars[cur]=true;save();setHUD();
@@ -720,31 +785,144 @@ function closeQ(){$('#qo').classList.remove('on')}
 function boom(n){const E=['⭐','🎉','🌟','🎈','✨'];for(let i=0;i<n;i++){const d=document.createElement('div');d.className='fall';d.textContent=E[i%5];d.style.left=Math.random()*100+'vw';d.style.animationDuration=(2+Math.random()*2)+'s';d.style.animationDelay=Math.random()*.8+'s';document.body.appendChild(d);setTimeout(()=>d.remove(),5000)}}
 $('#wc').onclick=()=>$('#wo').classList.remove('on');
 
-/* ---------- 老師：PDF + LLM ---------- */
-$('#tb').onclick=()=>{closeList();$('#to').classList.add('on')};
+/* ---------- 老師：外部 AI → Markdown → 島嶼 ---------- */
+const TEACHER_PROMPT=`你是國小老師的助理。請依使用者上傳或貼上的教材，轉成「知識島探險」可用的 Markdown。
+
+規則：
+1. 用繁體中文，語氣適合國小生
+2. 分成 3 到 6 個章節（每章 = 一座島）
+3. 每章 2 到 3 題四選一
+4. 只根據教材內容，不要編造教材沒有的知識
+5. 只輸出 Markdown，不要其他說明
+
+格式必須如下（請嚴格遵守標題層級與欄位名稱）：
+
+# 教材名稱
+
+## 章節名稱
+摘要：給小朋友看的重點（50到100字）
+問AI：我是國小生。請用簡單的話解釋本島主題，不要告訴我考題答案。
+
+### 題目
+題目文字？
+- A. 選項一
+- B. 選項二
+- C. 選項三
+- D. 選項四
+答案：B
+解釋：簡短說明為什麼對
+問AI：我是國小生。請解釋和這題有關的知識，不要直接說選哪一個。
+
+### 題目
+（下一題，同上格式）
+
+## 下一章節名稱
+（同上）
+`;
+
+function parseLessonMarkdown(md){
+  const lines=String(md||'').replace(/\r\n/g,'\n').split('\n');
+  let title='教材',chapters=[],ch=null,q=null,mode='';
+  const flushQ=()=>{if(q&&q.q&&q.options.length>=2){if(q.answer<0||q.answer>=q.options.length)q.answer=0;ch.questions.push(q)}q=null};
+  const flushCh=()=>{flushQ();if(ch&&ch.title&&ch.questions.length)chapters.push(ch);ch=null};
+  for(let raw of lines){
+    const line=raw.trim();
+    if(!line)continue;
+    if(/^#\s+/.test(line)&&!/^##/.test(line)){title=line.replace(/^#\s+/,'').trim()||title;continue}
+    if(/^##\s+/.test(line)){flushCh();ch={title:line.replace(/^##\s+/,'').trim().slice(0,20)||'章節',summary:'',aiAsk:'',questions:[]};mode='ch';continue}
+    if(/^###\s+/.test(line)){if(!ch){ch={title:'章節',summary:'',aiAsk:'',questions:[]}}flushQ();q={q:'',options:[],answer:0,explain:'',aiAsk:''};mode='q';continue}
+    if(!ch)continue;
+    const ans=line.match(/^答案[:：]\s*([A-Da-d1-4])/);
+    if(ans&&q){const a=ans[1].toUpperCase();q.answer=/[1-4]/.test(a)?(+a-1):'ABCD'.indexOf(a);if(q.answer<0)q.answer=0;continue}
+    if(/^(解釋|說明)[:：]/.test(line)&&q){q.explain=line.replace(/^(解釋|說明)[:：]\s*/,'');continue}
+    if(/^問AI[:：]/.test(line)){const v=line.replace(/^問AI[:：]\s*/,'');if(q)q.aiAsk=v;else ch.aiAsk=v;continue}
+    if(/^摘要[:：]/.test(line)){ch.summary=line.replace(/^摘要[:：]\s*/,'');continue}
+    const opt=line.match(/^[-*]\s*([A-Da-d])[\.．、\)]\s*(.+)$/)||line.match(/^([A-Da-d])[\.．、\)]\s*(.+)$/);
+    if(opt&&q){q.options.push(opt[2].trim());continue}
+    if(mode==='q'&&q){
+      if(!q.q)q.q=line.replace(/^題目[:：]\s*/,'');
+      else if(!/^答案|^解釋|^問AI|^摘要/.test(line)&&!opt)q.q+=' '+line;
+    }else if(mode==='ch'){
+      if(!ch.summary&&!/^問AI/.test(line))ch.summary=line.replace(/^摘要[:：]\s*/,'');
+    }
+  }
+  flushCh();
+  if(!chapters.length)throw new Error('格式不符');
+  chapters.forEach(c=>{if(!c.summary)c.summary=c.title;if(!c.aiAsk)c.aiAsk=defaultAiAsk(c.title);c.questions.forEach(qq=>{if(!qq.aiAsk)qq.aiAsk=defaultAiAsk(qq.q)})});
+  return {title,chapters};
+}
+
+$('#tb').onclick=()=>{closeList();$('#to').classList.add('on');
+  const el=$('#teacherPromptText');if(el&&!el.dataset.ready){el.textContent=TEACHER_PROMPT;el.dataset.ready='1'}
+};
 $('#tc').onclick=()=>$('#to').classList.remove('on');
 $('#demo').onclick=()=>{lesson=DEMO;stars=[];save();build();$('#tm').textContent='已載入範例教材。'};
 $('#rst').onclick=()=>{stars=[];save();setHUD();$('#tm').textContent='星星已重設。'};
-$('#pdf').onchange=async e=>{
-  const f=e.target.files[0];if(!f)return;const m=$('#tm');m.textContent='讀取 PDF 中…';
+$('#copyPrompt').onclick=async()=>{
+  try{await navigator.clipboard.writeText(TEACHER_PROMPT);$('#tm').textContent='提示詞已複製，可到 Grok / Gemini 貼上。'}
+  catch(e){$('#tm').textContent='無法自動複製，請手動選取上方提示詞。'}
+};
+$('#mdfile').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{$('#txt').value=await f.text();$('#tm').textContent='已讀取 '+f.name+'，請按「載入成島嶼」。'}
+  catch(err){$('#tm').textContent='讀取檔案失敗'}
+};
+function lessonToMarkdown(les){
+  const L=les||lesson;if(!L)return '';
+  let md='# '+(L.title||'教材')+'\n\n';
+  (L.chapters||[]).forEach(ch=>{
+    md+='## '+(ch.title||'章節')+'\n';
+    md+='摘要：'+(ch.summary||'')+'\n';
+    if(ch.aiAsk)md+='問AI：'+ch.aiAsk+'\n';
+    md+='\n';
+    (ch.questions||[]).forEach(q=>{
+      md+='### 題目\n'+(q.q||'')+'\n';
+      (q.options||[]).forEach((o,i)=>{md+='- '+('ABCD'[i]||(i+1))+'. '+o+'\n'});
+      md+='答案：'+('ABCD'[q.answer]||'A')+'\n';
+      if(q.explain)md+='解釋：'+q.explain+'\n';
+      if(q.aiAsk)md+='問AI：'+q.aiAsk+'\n';
+      md+='\n';
+    });
+  });
+  return md;
+}
+function downloadText(filename,text,mime){
+  const blob=new Blob([text],{type:mime||'text/plain;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+$('#loadMd').onclick=()=>{
+  const txt=$('#txt').value.trim(),m=$('#tm');
+  if(txt.length<20){m.textContent='請先貼上或上傳 Markdown。';return}
   try{
-    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    const doc=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let t='';
-    for(let p=1;p<=doc.numPages&&t.length<12000;p++){const pg=await doc.getPage(p),c=await pg.getTextContent();t+=c.items.map(i=>i.str).join(' ')+'\n'}
-    $('#txt').value=t.slice(0,12000);m.textContent=t.trim()?'讀取完成（'+doc.numPages+' 頁），可按「AI 產生島嶼」。':'這個 PDF 沒有可讀文字（可能是掃描檔），請貼上文字。';
-  }catch(err){m.textContent='PDF 讀取失敗，請改貼上文字。'}
+    const r=parseLessonMarkdown(txt);
+    const ok=r.chapters.every(c=>c.questions.every(q=>q.q&&q.options.length>=2));
+    if(!ok)throw new Error('題目不完整');
+    lesson=r;stars=[];save();saveStars();build();
+    m.textContent='已載入 '+r.chapters.length+' 座島（'+r.title+'）。請按「下載 lesson.md」放到 GitHub 專案根目錄，學生才能看到。';
+  }catch(err){m.textContent='載入失敗：請確認 Markdown 格式（# 教材、## 章節、### 題目、答案：A）';}
+};
+$('#dlMd').onclick=()=>{
+  if(!lesson){$('#tm').textContent='目前沒有教材';return}
+  downloadText('lesson.md',lessonToMarkdown(lesson),'text/markdown;charset=utf-8');
+  $('#tm').textContent='已下載 lesson.md → 放到 GitHub Pages 網站根目錄（和 index.html 同層）再推送。';
+};
+$('#dlJson').onclick=()=>{
+  if(!lesson){$('#tm').textContent='目前沒有教材';return}
+  downloadText('lesson.json',JSON.stringify(lesson,null,2),'application/json');
+  $('#tm').textContent='已下載 lesson.json → 也可放在網站根目錄（優先於 lesson.md）。';
 };
 $('#gen').onclick=async()=>{
-  const txt=$('#txt').value.trim(),m=$('#tm');if(txt.length<30){m.textContent='請先上傳 PDF 或貼上教材。';return}
+  const txt=$('#txt').value.trim(),m=$('#tm');if(txt.length<30){m.textContent='請先貼上教材文字。';return}
   let sample=null;try{sample=window.claude?await claude.use('sample'):null}catch(e){}
-  if(!sample){m.textContent='目前無法使用 AI，請先用「載入範例」。';return}
+  if(!sample){m.textContent='本頁 AI 不可用。請改用 Grok/Gemini 轉 Markdown 後按「載入成島嶼」。';return}
   const b=$('#gen');b.disabled=true;m.textContent='AI 正在整理章節與題目…';
   try{
-    const r=await sample.json(`你是國小老師的助理。請把下列教材分成 3 到 6 個章節，每章 2 到 3 題四選一選擇題，題目平均分配到各章。用繁體中文，語氣適合國小學生，內容只能依據教材。只輸出 JSON，格式：{"title":"教材名稱","chapters":[{"title":"章節名(8字內)","summary":"給小朋友看的重點，50到100字","questions":[{"q":"題目","options":["A","B","C","D"],"answer":0,"explain":"簡短解釋"}]}]}。answer 是正確選項的索引(0到3)。\n\n教材：\n${txt}`);
+    const r=await sample.json(`你是國小老師的助理。請把下列教材分成 3 到 6 個章節，每章 2 到 3 題四選一選擇題。用繁體中文。只輸出 JSON：{"title":"教材名稱","chapters":[{"title":"章節名","summary":"摘要","aiAsk":"問AI句子","questions":[{"q":"題目","options":["A","B","C","D"],"answer":0,"explain":"解釋","aiAsk":"問AI句子"}]}]}。answer 為 0-3。\n\n教材：\n${txt}`);
     const ok=r&&Array.isArray(r.chapters)&&r.chapters.length&&r.chapters.every(c=>c.title&&Array.isArray(c.questions)&&c.questions.length&&c.questions.every(q=>q.q&&Array.isArray(q.options)&&q.options.length>=2&&Number.isInteger(q.answer)&&q.answer<q.options.length));
     if(!ok)throw 0;
     lesson=r;stars=[];save();build();m.textContent='完成！已產生 '+r.chapters.length+' 座島嶼。';setTimeout(()=>$('#to').classList.remove('on'),900);
-  }catch(err){m.textContent='產生失敗，請再試一次或縮短教材。'}
+  }catch(err){m.textContent='產生失敗，請改用外部 AI → Markdown 流程。'}
   b.disabled=false;
 };
 /* ---------- 多人 MQTT（mqttgo.io） ---------- */
@@ -1139,7 +1317,27 @@ function onRaceEnd(){
 }
 $('#rkOk').onclick=()=>{hideRoomOvs();roomStatus='none';roomCode='';roomHost=false;mpVisit(-1)};
 
-build();requestAnimationFrame(loop);
+async function loadSharedLesson(){
+  // GitHub Pages：全班共用站上的 lesson.json / lesson.md
+  try{
+    const r=await fetch('lesson.json',{cache:'no-store'});
+    if(r.ok){const j=await r.json();if(j&&Array.isArray(j.chapters)&&j.chapters.length)return j}
+  }catch(e){}
+  try{
+    const r=await fetch('lesson.md',{cache:'no-store'});
+    if(r.ok){const t=await r.text();if(t.trim().length>20)return parseLessonMarkdown(t)}
+  }catch(e){}
+  return null;
+}
+async function boot(){
+  const shared=await loadSharedLesson();
+  if(shared){lesson=shared}
+  else if(!lesson){lesson=DEMO}
+  try{const s=JSON.parse(localStorage.getItem('isl_stars')||'null');if(Array.isArray(s))stars=s}catch(e){}
+  if(!Array.isArray(stars)||stars.length!==lesson.chapters.length)stars=lesson.chapters.map(()=>false);
+  build();requestAnimationFrame(loop);
+}
+boot();
 </script>
 
 </body></html>
