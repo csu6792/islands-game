@@ -423,9 +423,24 @@ const cam=new THREE.PerspectiveCamera(45,1,.1,200);
 const hemi=new THREE.HemisphereLight(cur_.hs,cur_.hg,cur_.hi);S.add(hemi);
 const sun=new THREE.DirectionalLight(cur_.sc,cur_.si);sun.position.copy(cur_.sp);S.add(sun);
 const seaG=new THREE.PlaneGeometry(300,300,80,80);seaG.rotateX(-Math.PI/2);
-const sea=new THREE.Mesh(seaG,new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:.55,metalness:.05}));sea.position.y=-.25;S.add(sea);
-const sp=seaG.attributes.position,cols=new Float32Array(sp.count*3),cD=cur_.cD,cL=cur_.cL,cc=new THREE.Color();seaG.setAttribute('color',new THREE.BufferAttribute(cols,3));
-function waves(t){for(let k=0;k<sp.count;k++){const x=sp.getX(k),z=sp.getZ(k),h=Math.sin(x*.5+t*1.3)*.1+Math.cos(z*.45+t)*.1+Math.sin((x+z)*.3+t*.7)*.05;sp.setY(k,h);const tcol=Math.min(1,Math.max(0,(h+.18)/.4));cc.copy(cD).lerp(cL,tcol*.85+.08);cols[k*3]=cc.r;cols[k*3+1]=cc.g;cols[k*3+2]=cc.b}sp.needsUpdate=true;seaG.attributes.color.needsUpdate=true}
+const cD=cur_.cD,cL=cur_.cL;
+/* 海面：波浪位移與漸層顏色全部改在 GPU 計算（沿用 MeshStandardMaterial 的光照、霧、flat shading） */
+const seaU={uTime:{value:0},uCD:{value:cD},uCL:{value:cL}};
+const seaMat=new THREE.MeshStandardMaterial({flatShading:true,roughness:.55,metalness:.05});
+seaMat.onBeforeCompile=sh=>{
+  Object.assign(sh.uniforms,seaU);
+  sh.vertexShader=sh.vertexShader
+    .replace('#include <common>','#include <common>\nuniform float uTime;\nvarying float vSeaT;')
+    .replace('#include <begin_vertex>',`vec3 transformed=vec3(position);
+      float seaH=sin(position.x*.5+uTime*1.3)*.1+cos(position.z*.45+uTime)*.1+sin((position.x+position.z)*.3+uTime*.7)*.05;
+      transformed.y=seaH;
+      vSeaT=clamp((seaH+.18)/.4,0.,1.);`);
+  sh.fragmentShader=sh.fragmentShader
+    .replace('#include <common>','#include <common>\nuniform vec3 uCD;\nuniform vec3 uCL;\nvarying float vSeaT;')
+    .replace('#include <color_fragment>','#include <color_fragment>\n      diffuseColor.rgb=mix(uCD,uCL,vSeaT*.85+.08);');
+};
+const sea=new THREE.Mesh(seaG,seaMat);sea.position.y=-.25;S.add(sea);
+function waves(t){seaU.uTime.value=t}
 function easeTod(){const f=.05;S.background.lerp(tg.bg,f);S.fog.color.copy(S.background);hemi.color.lerp(tg.hs,f);hemi.groundColor.lerp(tg.hg,f);hemi.intensity+=(tg.hi-hemi.intensity)*f;
   sun.color.lerp(tg.sc,f);sun.intensity+=(tg.si-sun.intensity)*f;sun.position.lerp(tg.sp,f);cD.lerp(tg.cD,f);cL.lerp(tg.cL,f);
   document.body.style.background='#'+S.background.getHexString()}
@@ -503,6 +518,8 @@ function boat(){
   g.add(mk(new THREE.BoxGeometry(.35,.18,.4),0xc9b48a,-.85,.12,0));
   g.add(mk(new THREE.BoxGeometry(.55,.32,.42),0xc4573a,.28,.28,0));
   g.add(mk(new THREE.BoxGeometry(.6,.06,.46),0x3d2a1e,.28,.46,0));
+  g.add(mk(new THREE.CylinderGeometry(.05,.06,.34,8),0x4a4a52,.4,.66,0));
+  g.add(mk(new THREE.CylinderGeometry(.056,.056,.05,8),0xd9573f,.4,.76,0));
   g.add(mk(new THREE.CylinderGeometry(.028,.036,1.55,6),0x6b5344,-.4,.82,0));
   const sailGeo=new THREE.BufferGeometry();
   sailGeo.setAttribute('position',new THREE.BufferAttribute(new Float32Array([0,0,0, 0,1.2,0, 1.05,.2,0]),3));
@@ -622,6 +639,58 @@ function skyTick(t,dt){sky.position.copy(cam.position);
   if(rainbow){rbT-=dt;rainbow.children.forEach(m=>m.material.opacity=Math.min(.75,rbT*.3));if(rbT<=0){S.remove(rainbow);rainbow=null}}
   if(flagM&&!RM){flagM.rotation.y=Math.sin(t*3)*.3;flagM.rotation.z=Math.sin(t*2.2)*.05}}
 
+/* ---------- 船：煙囪煙 + 船尾航跡 ---------- */
+const smokePool=[],wakePool=[];
+const smokeTex=tex((x,w,h)=>{const g=x.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);g.addColorStop(0,'rgba(255,255,255,.95)');g.addColorStop(.55,'rgba(255,255,255,.45)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,w,h)},64,64);
+const wakeGeo=new THREE.PlaneGeometry(1,1);wakeGeo.rotateX(-Math.PI/2);
+for(let k=0;k<16;k++){const m=new THREE.Sprite(new THREE.SpriteMaterial({map:smokeTex,transparent:true,opacity:0,depthWrite:false,color:0xcfd4d8}));m.visible=false;S.add(m);smokePool.push({m,t:9,life:2.8,vx:0,vz:0})}
+for(let k=0;k<54;k++){const m=new THREE.Mesh(wakeGeo,new THREE.MeshBasicMaterial({map:smokeTex,transparent:true,opacity:0,depthWrite:false,color:0xffffff}));m.visible=false;S.add(m);wakePool.push({m,t:9,life:2.6,vx:0,vz:0,s0:.5})}
+let fxSmokeT=0,fxWakeT=0;
+function boatFx(t,dt,f){
+  if(RM)return;
+  const a=f.ph+t*f.spd,dx=Math.cos(a),dz=-Math.sin(a),bx=f.g.position.x,bz=f.g.position.z;
+  // 煙囪煙：從煙囪頂冒出，留在原地飄散
+  fxSmokeT-=dt;
+  if(fxSmokeT<=0){fxSmokeT=.3;const q=smokePool.find(o=>o.t>=o.life);
+    if(q){q.t=0;q.life=2.6+Math.random()*.8;q.vx=.18+Math.random()*.1;q.vz=(Math.random()-.5)*.12;q.m.visible=true;q.m.position.set(bx-dx*.4,f.g.position.y+.95,bz-dz*.4)}}
+  const dark=1-NK*.55;
+  smokePool.forEach(q=>{if(q.t>=q.life)return;q.t+=dt;const u=q.t/q.life;
+    if(u>=1){q.m.visible=false;return}
+    q.m.position.x+=q.vx*dt;q.m.position.z+=q.vz*dt;q.m.position.y+=dt*(.55-u*.25);
+    const sc=.22+u*.9;q.m.scale.set(sc,sc,1);q.m.material.opacity=.55*(1-u)*Math.min(1,q.t*4);q.m.material.color.setScalar(.82*dark)});
+  // 航跡：船尾兩側向外擴散成 V 字 + 中央泡沫
+  fxWakeT-=dt;
+  if(fxWakeT<=0){fxWakeT=.14;
+    [[-1,.34],[0,0],[1,.34]].forEach(([side,lat])=>{const q=wakePool.find(o=>o.t>=o.life);if(!q)return;
+      q.t=0;q.life=2.4+Math.random()*.4;q.s0=side?.45:.6;
+      const sx=bx-dx*.95,sz=bz-dz*.95,px=-dz,pz=dx;
+      q.vx=px*side*lat;q.vz=pz*side*lat;q.m.visible=true;q.m.position.set(sx+px*side*.18,.012,sz+pz*side*.18)})}
+  wakePool.forEach(q=>{if(q.t>=q.life)return;q.t+=dt;const u=q.t/q.life;
+    if(u>=1){q.m.visible=false;return}
+    q.m.position.x+=q.vx*dt;q.m.position.z+=q.vz*dt;
+    const sc=q.s0+u*1.3;q.m.scale.set(sc,1,sc*1.4);q.m.material.opacity=.5*(1-u)*Math.min(1,q.t*5);q.m.material.color.setScalar(1-NK*.45)});
+}
+/* ---------- 居民過橋 ---------- */
+let bridgeWalkers=[];
+function addBridgeWalkers(o,span,hubShore){
+  const B=o.g.position,d=Math.hypot(B.x,B.z)||1,ux=B.x/d,uz=B.z/d;
+  const cnt=lesson.chapters.length>8?1:2,L=span+1.8,cols=[[0xd9573f,0x3b2a20],[0x4a8fb5,0x1c1c1c],[0xe0a63a,0x8a5a2b],[0x7a5cd6,0x2b2521]];
+  for(let k=0;k<cnt;k++){
+    const c=cols[(o.i*2+k)%4],p=person(c[0],c[1]);p.scale.setScalar(1.25);G.add(p);
+    bridgeWalkers.push({g:p,ux,uz,start:hubShore-.9,span,hubShore,L,lat:(k?1:-1)*.1,sp:.28+.07*((o.i+k)%3),ph:(k*.5+o.i*.173)%1,face:0})}
+}
+function bridgeTick(t){
+  const tt=RM?0:t;
+  bridgeWalkers.forEach(w=>{
+    // 三角波來回走：0→L→0
+    const raw=(w.ph+tt*w.sp/w.L)%1,u=raw<.5?raw*2:2-raw*2,dir=raw<.5?1:-1;
+    const dist=w.start+u*w.L,rel=(dist-w.hubShore)/w.span,onB=rel>0&&rel<1;
+    const sag=onB?Math.sin(rel*Math.PI)*.22:0,sw=Math.sin(tt*6+w.ph*9);
+    const px=-w.uz,pz=w.ux;
+    w.g.position.set(w.ux*dist+px*w.lat,.585-sag+Math.abs(sw)*.01,w.uz*dist+pz*w.lat);
+    const want=Math.atan2(w.ux*dir,w.uz*dir);w.face=w.face+wrapPi(want-w.face)*Math.min(1,.12);w.g.rotation.y=w.face;
+    const U=w.g.userData;U.L.rotation.x=sw*.6;U.Rg.rotation.x=-sw*.6;U.A1.rotation.x=-sw*.5;U.A2.rotation.x=sw*.5});
+}
 let vth=0,fdist=null,prevDist=null,flagM=null;
 const RM=matchMedia('(prefers-reduced-motion:reduce)').matches;
 let th=0.4,ph=1.0,dist=24,items=[],hit=[],floaters=[],guide=null,isl=[],auto=!RM,ftheta=null,tph=null,topView=false;
@@ -647,7 +716,7 @@ function school(){
   [[-1,.5],[1,.5]].forEach(p=>g.add(glow(p[0],.4,p[1]+.1,1.7)));g.add(glow(0,.55,.7,1.9),glow(-1,.4,-.5,1.7),glow(1,.4,-.5,1.7),glow(0,.55,-.7,1.9));
   return g}
 function build(){
-  while(G.children.length)G.remove(G.children[0]);LB.innerHTML='';items=[];hit=[];floaters=[];isl=[];hubG=null;beams.length=0;
+  while(G.children.length)G.remove(G.children[0]);LB.innerHTML='';items=[];hit=[];floaters=[];isl=[];hubG=null;beams.length=0;bridgeWalkers=[];
   const n=lesson.chapters.length;
   // 主島岸約 2.8、知識島岸約 3.3，中心距至少約 11，並確保島與島不重疊
   const r=Math.max(12, n<=1?12:6.2/Math.sin(Math.PI/n));
@@ -707,6 +776,7 @@ function build(){
     // 橋沿 local X 建造，對齊到半徑方向 (B.x, B.z)
     br.rotation.y=Math.atan2(B.x,B.z)-Math.PI/2;
     G.add(br);
+    addBridgeWalkers(o,span,hubShore);
   });
   /* 周邊裝飾 */
   const base=Math.max(r,3)+10;
@@ -760,12 +830,14 @@ function loop(t){if(document.hidden||(document.querySelector(".ov.on")&&(frameN+
       f.g.rotation.y=a+Math.PI;
       f.g.rotation.z=Math.sin(t*1.3+f.ph)*.05;
       f.g.rotation.x=Math.sin(t*1.1+f.ph)*.025;
+      boatFx(t,dt,f);
     }else{
       f.g.position.y=Math.sin(t*1.2+f.ph)*.07;
       f.g.rotation.z=Math.sin(t*1.1+f.ph)*.05;
       if(f.rot)f.g.rotation.y=f.rot+Math.sin(t*.3)*.15;
     }
   });
+  bridgeTick(t);
   // 海鳥只在早上出現（遊戲時間 05:00–09:00）
   birds.forEach(b=>{
     const morning=gameH>=5&&gameH<9;
@@ -894,9 +966,18 @@ addEventListener('keydown',e=>{if(e.key==='Escape'){closeList();closeQ()}});
 
 /* ---------- 答題 ---------- */
 let cur=0,qi=0;
-function openIsland(i){if(items[i])items[i].bn=1;cur=i;qi=-1;closeList();$('#qo').classList.add('on');renderQ();if(typeof mpVisit==='function')mpVisit(i)}
+function raceRunning(){return typeof roomStatus!=='undefined'&&roomStatus==='running'}
+function openIsland(i){if(items[i])items[i].bn=1;cur=i;closeList();
+  if(!raceRunning()){ // 非競賽模式：不顯示題目，避免賽前先看到題目
+    qi=-2;$('#qo').classList.add('on');renderQ();if(typeof mpVisit==='function')mpVisit(i);return}
+  qi=-1;$('#qo').classList.add('on');renderQ();if(typeof mpVisit==='function')mpVisit(i)}
 function renderQ(){
   const ch=lesson.chapters[cur],n=ch.questions.length,c=$('#qc');
+  if(qi===-2||!raceRunning()){
+    c.innerHTML=`<span class="chip">第 ${String(cur+1).padStart(2,'0')} 島</span><h2>${esc(ch.title)}</h2>
+      <p>🔒 題目只在「競賽模式」開放。<br>請建立或加入競賽房間，等房主按下開始後再來挑戰！</p>
+      <div class="row"><button class="btn alt" id="x">離開</button><button class="btn" id="goRace">競賽房間 🏆</button></div>`;
+    $('#x').onclick=closeQ;$('#goRace').onclick=()=>{closeQ();if(typeof openRoomMenu==='function')openRoomMenu()};return}
   if(qi<0){
     const chapAsk=getAiAsk(null,ch);
     c.innerHTML=`<span class="chip">第 ${String(cur+1).padStart(2,'0')} 島</span><h2>${esc(ch.title)}</h2><p>${esc(ch.summary)}</p>
@@ -920,14 +1001,16 @@ function renderQ(){
     else{b.classList.add('bad');b.disabled=true;$('#m').textContent='💪 再想想看，再試一次！也可先複製上方問句去問 AI。'}});
 }
 function finish(){
-  const first=!stars[cur];stars[cur]=true;save();saveStars();setHUD();
-  let raceBonus='';
+  if(!raceRunning()){closeQ();return} // 競賽已結束 / 非競賽模式：不給星星、不廣播
+  const first=!stars[cur];
+  let raceBonus='',pts=0;
   if(typeof raceOnIslandDone==='function'){
-    const pts=raceOnIslandDone(cur);
+    pts=raceOnIslandDone(cur);
     if(pts>0) raceBonus=`<p style="text-align:center;font-weight:900;color:var(--brand)">競賽 +${pts} 分！</p>`;
   }
-  // 第一次拿到星星：本機顯示通知 + MQTT 廣播給同站其他人
-  if(first){
+  stars[cur]=true;save();saveStars();setHUD();
+  // 本場競賽第一次完成這座島：本機顯示通知 + MQTT 廣播給同房以外的人
+  if(pts>0){
     const ch=lesson.chapters[cur];
     const title=ch?ch.title:('第'+(cur+1)+'島');
     showStarToast(myName||'探險家',title);
@@ -1034,6 +1117,7 @@ function handleEventMsg(topic,payload){
   try{
     const data=JSON.parse(payload.toString());
     if(!data||data.type!=='star')return;
+    if(!raceRunning())return; // 只在競賽模式顯示星星廣播
     // 自己發的也顯示（本機已在 finish 呼叫一次，這裡跳過避免重複）
     if(data.id===myId)return;
     showStarToast(data.name,data.title);
@@ -1430,7 +1514,7 @@ function raceOnIslandDone(islandIdx){
 
 function onRaceEnd(){
   if(roomStatus==='ended'&&$('#roomRank').classList.contains('on'))return;
-  roomStatus='ended';stopRaceTimer();$('#raceHud').hidden=true;
+  roomStatus='ended';stopRaceTimer();$('#raceHud').hidden=true;closeQ();
   // 排名（排除房主）
   const rankCmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt|0,tb=b.scoreAt|0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
   const ranked=[...racePlayers.values()].filter(p=>!p.isHost).sort(rankCmp);
