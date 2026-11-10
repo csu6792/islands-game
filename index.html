@@ -224,7 +224,7 @@ textarea{height:110px;resize:vertical}
   <div class="row" style="justify-content:center;margin-top:8px">
     <button class="btn" id="join">進入島嶼 ➜</button>
   </div>
-  <p style="font-size:12px;color:var(--muted);margin-top:10px">即時連線</p>
+  <p style="font-size:12px;color:var(--muted);margin-top:10px">透過 MQTTGO.io 即時連線</p>
 </div></div>
 
 <div id="online" hidden>
@@ -1142,7 +1142,7 @@ build=function(){
 const ROOM_ROOT='islandquest/v1/rooms';
 let roomCode='',roomHost=false,roomStatus='none'; // none|lobby|running|ended
 let roomDuration=180,roomStartAt=0,roomEndAt=0;
-let raceScore=0,raceDone={},racePlayers=new Map(); // id->{name,score,isHost}
+let raceScore=0,raceScoreAt=0,raceDone={},racePlayers=new Map(); // id->{name,score,scoreAt,isHost}
 let raceTimer=null,roomSubbed='';
 
 function genRoomCode(){
@@ -1176,7 +1176,7 @@ $('#durTabs').onclick=e=>{
 $('#rcGo').onclick=()=>{
   if(!mqttClient?.connected){$('#rcMsg').textContent='尚未連線';return}
   roomCode=genRoomCode();roomHost=true;roomStatus='lobby';
-  raceScore=0;raceDone={};racePlayers.clear();
+  raceScore=0;raceScoreAt=0;raceDone={};racePlayers.clear();
   const state={code:roomCode,hostId:myId,hostName:myName,status:'lobby',durationSec:roomDuration,startAt:0,endAt:0,ts:Date.now()};
   mqttClient.publish(roomTopic(),JSON.stringify(state),{qos:0,retain:true});
   publishRaceScore();
@@ -1189,7 +1189,7 @@ $('#rjGo').onclick=()=>{
   if(!/^[A-Z0-9]{6}$/.test(code)){$('#rjMsg').textContent='請輸入 6 碼英文或數字';return}
   if(!mqttClient?.connected){$('#rjMsg').textContent='尚未連線';return}
   roomCode=code;roomHost=false;roomStatus='joining';
-  raceScore=0;raceDone={};racePlayers.clear();
+  raceScore=0;raceScoreAt=0;raceDone={};racePlayers.clear();
   let gotState=false;
   const once=()=>{gotState=true};
   const prev=handleRoomMsg;
@@ -1221,9 +1221,9 @@ function subRoom(){
 
 function publishRaceScore(){
   if(!mqttClient?.connected||!roomCode)return;
-  const payload=JSON.stringify({id:myId,name:myName,score:raceScore,done:Object.keys(raceDone).map(Number),isHost:roomHost,ts:Date.now()});
+  const payload=JSON.stringify({id:myId,name:myName,score:raceScore,scoreAt:raceScoreAt||0,done:Object.keys(raceDone).map(Number),isHost:roomHost,ts:Date.now()});
   mqttClient.publish(scoreTopic(myId),payload,{qos:0,retain:true});
-  racePlayers.set(myId,{name:myName,score:raceScore,isHost:roomHost});
+  racePlayers.set(myId,{name:myName,score:raceScore,scoreAt:raceScoreAt||0,isHost:roomHost});
   renderLobbyPlayers();
   $('#raceScore').textContent=raceScore;
 }
@@ -1253,7 +1253,7 @@ function handleRoomMsg(topic,payload){
         if(data&&data.id){racePlayers.delete(data.id);renderLobbyPlayers()}
         return;
       }
-      racePlayers.set(data.id,{name:data.name||'玩家',score:data.score|0,isHost:!!data.isHost});
+      racePlayers.set(data.id,{name:data.name||'玩家',score:data.score|0,scoreAt:data.scoreAt|0||data.ts|0,isHost:!!data.isHost});
       renderLobbyPlayers();
       if(data.id===myId)$('#raceScore').textContent=data.score|0;
     }
@@ -1279,7 +1279,8 @@ function renderLobbyInfo(data){
 }
 function renderLobbyPlayers(){
   const ul=$('#rlPlayers');if(!ul)return;
-  const arr=[...racePlayers.values()].sort((a,b)=>b.score-a.score);
+  const rankCmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt|0,tb=b.scoreAt|0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
+  const arr=[...racePlayers.values()].sort(rankCmp);
   ul.innerHTML=arr.map(p=>`<li style="padding:6px 0;border-bottom:1px solid var(--line)">${esc(p.name)}${p.isHost?' <small style="color:var(--muted)">房主</small>':''}　<strong>${p.score}</strong> 分</li>`).join('')||'<li style="color:var(--muted)">還沒有玩家</li>';
 }
 function showRoomLobby(){
@@ -1297,7 +1298,7 @@ $('#rlStart').onclick=()=>{
   const state={code:roomCode,hostId:myId,hostName:myName,status:'running',durationSec:roomDuration,startAt:roomStartAt,endAt:roomEndAt,ts:now};
   mqttClient.publish(roomTopic(),JSON.stringify(state),{qos:0,retain:true});
   // 重置自己分數（房主不計分）
-  raceScore=0;raceDone={};publishRaceScore();
+  raceScore=0;raceScoreAt=0;raceDone={};publishRaceScore();
   onRaceStart();
 };
 $('#rlLeave').onclick=()=>{
@@ -1343,6 +1344,7 @@ function raceOnIslandDone(islandIdx){
   raceDone[islandIdx]=true;
   const pts=1;
   raceScore+=pts;
+  raceScoreAt=Date.now(); // 用於同分時：先完成者排名較前
   publishRaceScore();
   return pts;
 }
@@ -1350,9 +1352,10 @@ function raceOnIslandDone(islandIdx){
 function onRaceEnd(){
   if(roomStatus==='ended'&&$('#roomRank').classList.contains('on'))return;
   roomStatus='ended';stopRaceTimer();$('#raceHud').hidden=true;
-  // 排名（排除房主）
-  const ranked=[...racePlayers.values()].filter(p=>!p.isHost).sort((a,b)=>b.score-a.score);
-  const all=[...racePlayers.values()].sort((a,b)=>b.score-a.score);
+  // 排名：分數高優先；同分則先達到者（scoreAt 較早）在上
+  const rankCmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt|0,tb=b.scoreAt|0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
+  const ranked=[...racePlayers.values()].filter(p=>!p.isHost).sort(rankCmp);
+  const all=[...racePlayers.values()].sort(rankCmp);
   $('#rkSub').textContent=ranked.length?`共 ${ranked.length} 位探險家參賽`:'本局沒有計分玩家（房主不計分）';
   $('#rkList').innerHTML=(ranked.length?ranked:all).map((p,i)=>`<li>${esc(p.name)}　${p.score} 分${p.isHost?'（房主）':''}${i===0&&!p.isHost?' 👑':''}</li>`).join('')||'<li>無資料</li>';
   hideRoomOvs();$('#roomRank').classList.add('on');boom(24);
@@ -1398,22 +1401,34 @@ async function fetchLessonFile(file){
   return null;
 }
 async function loadCatalog(){
+  const parseJsonLoose=t=>{
+    const cleaned=String(t).replace(/,\s*([}\]])/g,'$1');
+    return JSON.parse(cleaned);
+  };
   try{
     const r=await fetch(lessonPath('lessons.json'),{cache:'no-store'});
     if(r.ok){
-      const j=await r.json();
+      const j=parseJsonLoose(await r.text());
       if(Array.isArray(j))lessonCatalog=j.filter(x=>x&&x.file);
       else if(j&&Array.isArray(j.lessons))lessonCatalog=j.lessons.filter(x=>x&&x.file);
     }
-  }catch(e){}
-  // 若沒有 catalog，仍提供常見檔名（會自動加 教材/ 前綴）
+  }catch(e){console.warn('教材/lessons.json 讀取失敗',e)}
+  if(!lessonCatalog.length){
+    try{
+      const r=await fetch('lessons.json',{cache:'no-store'});
+      if(r.ok){
+        const j=parseJsonLoose(await r.text());
+        if(Array.isArray(j))lessonCatalog=j.filter(x=>x&&x.file);
+        else if(j&&Array.isArray(j.lessons))lessonCatalog=j.lessons.filter(x=>x&&x.file);
+      }
+    }catch(e){}
+  }
   if(!lessonCatalog.length){
     lessonCatalog=[
       {id:'default',title:'預設教材 (lesson.md)',file:'lesson.md'},
       {id:'json',title:'預設教材 (lesson.json)',file:'lesson.json'}
     ];
   }
-  // student page: picker UI on login
 }
 let pickedLessonKey='';
 function renderLessonPicker(){
@@ -1425,8 +1440,7 @@ function renderLessonPicker(){
     const hit=lessonCatalog.find(x=>(x.id||x.file)===q||x.file===q);
     if(wrap)wrap.hidden=false;
     let html=`<button type="button" aria-selected="true"><b>📘 ${esc(hit?hit.title:q)}</b><small>網址已指定此教材</small></button>`;
-    const others=lessonCatalog.filter(x=>{const k=x.id||x.file;return k!==q&&x.file!==q});
-    html+=others.map(it=>{
+    html+=lessonCatalog.filter(x=>{const k=x.id||x.file;return k!==q&&x.file!==q}).map(it=>{
       const k=it.id||it.file;
       return `<button type="button" data-k="${esc(k)}"><b>${esc(it.title||it.file)}</b><small>${esc(it.file||'')}</small></button>`;
     }).join('');
@@ -1497,7 +1511,8 @@ function downloadText(filename,text,mime){
 }
 function exportRaceCSV(){
   const rows=[['排名','暱稱','分數','角色','房間','教材','時間']];
-  const ranked=[...racePlayers.values()].sort((a,b)=>b.score-a.score);
+  const rankCmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt|0,tb=b.scoreAt|0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
+  const ranked=[...racePlayers.values()].sort(rankCmp);
   ranked.forEach((p,i)=>{
     rows.push([
       i+1,
