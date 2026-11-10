@@ -296,6 +296,7 @@ textarea{height:110px;resize:vertical}
   <div class="msg" id="rlMsg"></div>
   <div class="row" style="justify-content:center">
     <button class="btn" id="rlStart" hidden>開始競賽 ➜</button>
+    <button class="btn" id="rlBack">回到地圖</button>
     <button class="btn alt" id="rlLeave">離開房間</button>
   </div>
 </div></div>
@@ -1450,7 +1451,7 @@ function showRoomLobby(){
   $('#rlCode').textContent=roomCode;
   renderLobbyInfo({durationSec:roomDuration,hostName:roomHost?myName:''});
   renderLobbyPlayers();
-  $('#rlMsg').textContent=roomHost?'分享代碼給朋友，人到齊後按開始':'等待房主開始競賽…';
+  $('#rlMsg').textContent=roomStatus==='running'?'競賽進行中，按「回到地圖」繼續答題！':roomHost?'分享代碼給朋友，人到齊後按開始':'等待房主開始競賽…';
   $('#roomLobby').classList.add('on');
 }
 
@@ -1464,6 +1465,7 @@ $('#rlStart').onclick=()=>{
   raceScore=0;raceScoreAt=0;raceDone={};publishRaceScore();
   onRaceStart();
 };
+$('#rlBack').onclick=()=>hideRoomOvs(); // 競賽中點主島看到房間視窗，可直接關閉回去答題
 $('#rlLeave').onclick=()=>{
   if(roomCode&&mqttClient){
     mqttClient.publish(scoreTopic(myId),JSON.stringify({id:myId,offline:true}),{qos:0,retain:true});
