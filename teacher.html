@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>知識島 · 老師教材區</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<style>
+:root{
+  --panel:#faf5ec; --ink:#4a3a30; --muted:#8a7868; --brand:#c0694a; --on-brand:#ffffff;
+  --teal:#4fb3c4; --line:#e3d8c4; --ok:#2bb673; --bad:#e5484d;
+  --shadow:0 3px 10px rgba(60,40,20,.18);
+  --f-body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;
+  --f-latin:"Jost","Noto Sans TC",sans-serif;
+  --gl:max(16px,env(safe-area-inset-left,0px));
+  --gr:max(16px,env(safe-area-inset-right,0px));
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --panel:#2f3752; --ink:#f1e9dc; --muted:#aab0c8; --brand:#e58a68; --on-brand:#2a1a12;
+    --teal:#4bb0c2; --line:#46507a; --shadow:0 3px 10px rgba(0,0,0,.35);
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;min-height:100%}
+body{
+  font-family:var(--f-body);background:linear-gradient(160deg,#8ec8d8 0%,#b8dce8 40%,#f0e6d4 100%);
+  color:var(--ink);padding:calc(18px + env(safe-area-inset-top,0px)) var(--gr) calc(24px + env(safe-area-inset-bottom,0px)) var(--gl);
+}
+a{color:var(--brand)}
+.wrap{max-width:720px;margin:0 auto}
+.card{
+  background:var(--panel);border-radius:28px;padding:22px 20px;box-shadow:var(--shadow);margin-bottom:16px;
+}
+h1{margin:0 0 4px;font-size:clamp(26px,6vw,34px);font-weight:900;color:var(--brand)}
+.sub{font-family:var(--f-latin);font-weight:600;font-size:11px;letter-spacing:.2em;color:var(--brand);margin-bottom:12px}
+h2{margin:0 0 10px;font-size:18px;font-weight:900}
+p{font-size:15px;line-height:1.65;margin:8px 0}
+label.sec{display:block;font-size:14px;font-weight:900;margin:14px 0 6px}
+.btn{
+  font:inherit;font-weight:900;font-size:15px;border:0;border-radius:999px;padding:11px 18px;
+  background:var(--brand);color:var(--on-brand);box-shadow:0 3px 0 rgba(0,0,0,.18);cursor:pointer;
+}
+.btn.alt{background:transparent;color:var(--ink);border:2px solid var(--ink);box-shadow:none;padding:9px 16px}
+.btn:disabled{opacity:.5}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:12px}
+.ai-box{margin:10px 0;padding:12px 14px;border-radius:16px;border:2px dashed var(--teal);background:rgba(79,179,196,.08)}
+.ai-box .ai-title{font-size:13px;font-weight:900;color:var(--teal);margin:0 0 6px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ai-box .ai-text{font-size:12px;line-height:1.5;font-weight:700;margin:0;white-space:pre-wrap;max-height:160px;overflow:auto;word-break:break-word}
+.ai-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.ai-link{
+  display:inline-flex;align-items:center;font-size:13px;font-weight:900;color:var(--teal);
+  text-decoration:none;border:2px solid var(--teal);border-radius:999px;padding:5px 12px;
+}
+.ai-link:hover{background:var(--teal);color:#fff}
+textarea,input[type=file],select{
+  width:100%;font:inherit;font-size:15px;padding:10px 12px;border-radius:14px;
+  border:2px solid var(--line);background:transparent;color:var(--ink);
+}
+textarea{min-height:160px;resize:vertical}
+input[type=file]::file-selector-button{
+  font:inherit;font-weight:700;border:0;border-radius:999px;background:var(--ink);color:var(--panel);
+  padding:6px 14px;margin-right:10px;cursor:pointer;
+}
+.msg{font-size:14px;font-weight:700;min-height:22px;margin-top:10px;color:var(--brand)}
+.msg.ok{color:var(--ok)}
+.msg.err{color:var(--bad)}
+code{background:var(--line);padding:1px 6px;border-radius:6px;font-size:13px}
+.topnav{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+.topnav a.btn{text-decoration:none}
+.hint{font-size:13px;color:var(--muted);font-weight:700}
+ol.steps{margin:8px 0 0 1.2em;padding:0;font-size:14px;line-height:1.7;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="topnav">
+    <div>
+      <h1>老師教材區</h1>
+      <div class="sub">KNOWLEDGE ISLAND · TEACHER</div>
+    </div>
+    <a class="btn alt" href="./知識島探險.html">回知識島 ➜</a>
+  </div>
+
+  <div class="card">
+    <h2>怎麼給全班用？</h2>
+    <ol class="steps">
+      <li>用下方提示詞，把教材丟給 Grok / Gemini / ChatGPT 轉成 Markdown</li>
+      <li>把產出的 Markdown 貼上來（或上傳 .md）→ 按「預覽檢查」</li>
+      <li>確認無誤後「下載 lesson.md」或「lesson.json」</li>
+      <li>放到 GitHub Pages 網站根目錄（和知識島 HTML 同層）並推送</li>
+      <li>多教材可再加 <code>lessons.json</code>，學生用 <code>?lesson=檔名</code> 開啟</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>① 複製提示詞 → 請 AI 轉教材</h2>
+    <div class="ai-box">
+      <div class="ai-title">
+        <span>提示詞</span>
+        <button type="button" class="btn copy" id="copyPrompt" style="padding:7px 14px;font-size:13px;box-shadow:none">複製提示詞</button>
+      </div>
+      <p class="ai-text" id="teacherPromptText"></p>
+      <div class="ai-links">
+        <a class="ai-link" id="openGemini" href="https://gemini.google.com/app" target="_blank" rel="noopener">打開 Gemini</a>
+        <a class="ai-link" id="openChatGPT" href="https://chatgpt.com/" target="_blank" rel="noopener">打開 ChatGPT</a>
+        <a class="ai-link" id="openGrok" href="https://grok.com/" target="_blank" rel="noopener">打開 Grok</a>
+      </div>
+    </div>
+    <p class="hint">建議：先複製提示詞 → 再開 AI 貼上，並附上你的教材內容。</p>
+  </div>
+
+  <div class="card">
+    <h2>② 貼上 Markdown 並檢查</h2>
+    <label class="sec" for="mdfile">上傳 .md 檔（可選）</label>
+    <input type="file" id="mdfile" accept=".md,text/markdown,text/plain">
+    <label class="sec" for="txt">或直接貼上 Markdown</label>
+    <textarea id="txt" placeholder="在此貼上 AI 產出的 Markdown…"></textarea>
+    <div class="row">
+      <button class="btn" id="loadMd" type="button">預覽檢查</button>
+      <button class="btn alt" id="dlMd" type="button">下載 lesson.md</button>
+      <button class="btn alt" id="dlJson" type="button">下載 lesson.json</button>
+      <button class="btn alt" id="demo" type="button">載入範例</button>
+    </div>
+    <div class="msg" id="tm" role="status"></div>
+    <div id="preview" hidden style="margin-top:14px;padding-top:12px;border-top:2px solid var(--line)">
+      <h2 style="font-size:16px">預覽結果</h2>
+      <div id="previewBody" style="font-size:14px;line-height:1.7;font-weight:700"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>多教材（選用）</h2>
+    <p>在網站根目錄放多個 <code>.md</code> / <code>.json</code>，並新增 <code>lessons.json</code>：</p>
+    <pre style="background:var(--line);padding:12px;border-radius:12px;overflow:auto;font-size:12px;line-height:1.5">{
+  {
+    "id": "solar",
+    "title": "太陽系",
+    "file": "太陽系.md"
+  },
+  {
+    "id": "plants",
+    "title": "植物的一生",
+    "file": "植物.md"
+  }
+]</pre>
+    <p class="hint">學生連結：<code>知識島探險.html?lesson=solar</code> 或 <code>?lesson=太陽系.md</code></p>
+  </div>
+</div>
+
+<script>
+const $=s=>document.querySelector(s);
+const TEACHER_PROMPT=`你是國小老師的助理。請依使用者上傳或貼上的教材，轉成「知識島探險」可用的 Markdown。
+
+規則：
+1. 用繁體中文，語氣適合國小生
+2. 分成 3 到 6 個章節（每章 = 一座島）
+3. 每章 5 到 6 題四選一
+4. 只根據教材內容，不要編造教材沒有的知識
+5. 只輸出 Markdown，不要其他說明
+6. 「問AI」必須寫出具體主題或題目大意（用「」包起來），禁止只寫空泛的「請解釋和這題有關的知識」
+
+格式必須如下（請嚴格遵守標題層級與欄位名稱）：
+
+# 教材名稱
+
+## 章節名稱
+摘要：給小朋友看的重點（50到100字）
+問AI：我是國小生。請用簡單的話說明「本章主題關鍵字」，不要告訴我考題答案。
+
+### 題目
+題目文字？
+- A. 選項一
+- B. 選項二
+- C. 選項三
+- D. 選項四
+答案：B
+解釋：簡短說明為什麼對
+問AI：我是國小生。題目是：「這裡寫完整題目」。請說明相關知識與原因，不要直接說選哪一個，也不要列出選項。
+
+### 題目
+（下一題，同上格式；每章共 5～6 題）
+
+## 下一章節名稱
+（同上）
+
+請直接給我完整的 Markdown 檔內容，不要省略、不要只給部分、不要加額外說明。
+`;
+
+const DEMO={title:"太陽系",chapters:[
+{title:"太陽與行星",summary:"太陽是太陽系的中心，它會發光發熱。八大行星繞著太陽轉動，地球是離太陽第三近的行星。",aiAsk:"我是國小生。請用簡單的話說明：太陽系的中心是什麼？八大行星離太陽由近到遠大概是誰？不要告訴我考題答案。",questions:[
+{q:"太陽系的中心是什麼？",options:["地球","太陽","月亮","火星"],answer:1,explain:"太陽在中心，行星繞著它轉。",aiAsk:"我是國小生。太陽系的中心是什麼？它有什麼特別的地方？用兩句話說明，不要直接說選擇題答案。"},
+{q:"地球是離太陽第幾近的行星？",options:["第一","第二","第三","第四"],answer:2,explain:"依序是水星、金星、地球。",aiAsk:"我是國小生。請依序說出離太陽最近的前四顆行星名稱，不要告訴我某一題要選哪個。"}]},
+{title:"月亮的秘密",summary:"月亮是地球的衛星，繞著地球轉。月亮本身不會發光，我們看到的月光是反射太陽的光。",aiAsk:"我是國小生。月亮是什麼？它會自己發光嗎？月光是怎麼來的？請用簡單的話說。",questions:[
+{q:"月亮繞著哪一個星球轉？",options:["太陽","火星","地球","金星"],answer:2,explain:"月亮是地球的衛星。",aiAsk:"我是國小生。什麼是衛星？月亮繞著哪一顆星球轉？用國小程度說明。"},
+{q:"月光是怎麼來的？",options:["月亮自己發光","反射太陽光","星星的光","燈光"],answer:1,explain:"月亮反射太陽的光。",aiAsk:"我是國小生。月亮自己會發光嗎？我們看到的月光是怎麼來的？請解釋原因。"}]},
+{title:"晝夜變化",summary:"地球會自轉，轉一圈大約是一天。面向太陽的地方是白天，背向太陽的地方是黑夜。",aiAsk:"我是國小生。為什麼會有白天和黑夜？和地球的轉動有什麼關係？請用簡單的話說明。",questions:[
+{q:"地球自轉一圈大約多久？",options:["一小時","一天","一個月","一年"],answer:1,explain:"自轉一圈約一天，所以有白天和黑夜。",aiAsk:"我是國小生。地球自轉是什麼意思？自轉一圈大約要多久？不要直接給選擇題答案。"}]}]};
+
+let lesson=null;
+
+function esc(s){return String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
+function defaultAiAsk(text){
+  const t=String(text||'').replace(/\s+/g,' ').trim().slice(0,100);
+  return `我是國小生。我想理解：「${t}」。請用簡單的話說明相關知識與原因，不要直接告訴我選擇題要選哪一個，也不要列出 A B C D。`;
+}
+function parseLessonMarkdown(md){
+  const lines=String(md||'').replace(/\r\n/g,'\n').split('\n');
+  let title='教材',chapters=[],ch=null,q=null,mode='';
+  const flushQ=()=>{if(q&&q.q&&q.options.length>=2){if(q.answer<0||q.answer>=q.options.length)q.answer=0;ch.questions.push(q)}q=null};
+  const flushCh=()=>{flushQ();if(ch&&ch.title&&ch.questions.length)chapters.push(ch);ch=null};
+  for(let raw of lines){
+    const line=raw.trim();
+    if(!line)continue;
+    if(/^#\s+/.test(line)&&!/^##/.test(line)){title=line.replace(/^#\s+/,'').trim()||title;continue}
+    if(/^##\s+/.test(line)){flushCh();ch={title:line.replace(/^##\s+/,'').trim().slice(0,20)||'章節',summary:'',aiAsk:'',questions:[]};mode='ch';continue}
+    if(/^###\s+/.test(line)){if(!ch){ch={title:'章節',summary:'',aiAsk:'',questions:[]}}flushQ();q={q:'',options:[],answer:0,explain:'',aiAsk:''};mode='q';continue}
+    if(!ch)continue;
+    const ans=line.match(/^答案[:：]\s*([A-Da-d1-4])/);
+    if(ans&&q){const a=ans[1].toUpperCase();q.answer=/[1-4]/.test(a)?(+a-1):'ABCD'.indexOf(a);if(q.answer<0)q.answer=0;continue}
+    if(/^(解釋|說明)[:：]/.test(line)&&q){q.explain=line.replace(/^(解釋|說明)[:：]\s*/,'');continue}
+    if(/^問AI[:：]/.test(line)){const v=line.replace(/^問AI[:：]\s*/,'');if(q)q.aiAsk=v;else ch.aiAsk=v;continue}
+    if(/^摘要[:：]/.test(line)){ch.summary=line.replace(/^摘要[:：]\s*/,'');continue}
+    const opt=line.match(/^[-*]\s*([A-Da-d])[\.．、\)]\s*(.+)$/)||line.match(/^([A-Da-d])[\.．、\)]\s*(.+)$/);
+    if(opt&&q){q.options.push(opt[2].trim());continue}
+    if(mode==='q'&&q){
+      if(!q.q)q.q=line.replace(/^題目[:：]\s*/,'');
+      else if(!/^答案|^解釋|^問AI|^摘要/.test(line)&&!opt)q.q+=' '+line;
+    }else if(mode==='ch'){
+      if(!ch.summary&&!/^問AI/.test(line))ch.summary=line.replace(/^摘要[:：]\s*/,'');
+    }
+  }
+  flushCh();
+  if(!chapters.length)throw new Error('格式不符');
+  chapters.forEach(c=>{if(!c.summary)c.summary=c.title;if(!c.aiAsk)c.aiAsk=defaultAiAsk(c.title);c.questions.forEach(qq=>{if(!qq.aiAsk)qq.aiAsk=defaultAiAsk(qq.q)})});
+  return {title,chapters};
+}
+function lessonToMarkdown(les){
+  const L=les||lesson;if(!L)return '';
+  let md='# '+(L.title||'教材')+'\n\n';
+  (L.chapters||[]).forEach(ch=>{
+    md+='## '+(ch.title||'章節')+'\n';
+    md+='摘要：'+(ch.summary||'')+'\n';
+    if(ch.aiAsk)md+='問AI：'+ch.aiAsk+'\n';
+    md+='\n';
+    (ch.questions||[]).forEach(q=>{
+      md+='### 題目\n'+(q.q||'')+'\n';
+      (q.options||[]).forEach((o,i)=>{md+='- '+('ABCD'[i]||(i+1))+'. '+o+'\n'});
+      md+='答案：'+('ABCD'[q.answer]||'A')+'\n';
+      if(q.explain)md+='解釋：'+q.explain+'\n';
+      if(q.aiAsk)md+='問AI：'+q.aiAsk+'\n';
+      md+='\n';
+    });
+  });
+  return md;
+}
+function downloadText(filename,text,mime){
+  const blob=new Blob([text],{type:mime||'text/plain;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function showPreview(les){
+  const box=$('#preview'),body=$('#previewBody');
+  if(!les){box.hidden=true;return}
+  const totalQ=les.chapters.reduce((n,c)=>n+(c.questions||[]).length,0);
+  body.innerHTML=`<p><b>${esc(les.title)}</b>　·　${les.chapters.length} 座島　·　共 ${totalQ} 題</p>`+
+    les.chapters.map((c,i)=>`<p>🏝️ 第 ${i+1} 島「${esc(c.title)}」：${(c.questions||[]).length} 題<br><span style="color:var(--muted);font-weight:700">${esc((c.summary||'').slice(0,80))}${(c.summary||'').length>80?'…':''}</span></p>`).join('');
+  box.hidden=false;
+}
+function setMsg(t,ok){
+  const m=$('#tm');m.textContent=t||'';m.className='msg'+(ok===true?' ok':ok===false?' err':'');
+}
+
+$('#teacherPromptText').textContent=TEACHER_PROMPT;
+$('#copyPrompt').onclick=async()=>{
+  try{
+    await navigator.clipboard.writeText(TEACHER_PROMPT);
+    setMsg('提示詞已複製，可到 Gemini / ChatGPT / Grok 貼上。',true);
+  }catch(e){setMsg('無法自動複製，請手動選取上方提示詞。',false)}
+};
+// Prefill ChatGPT with prompt when possible
+$('#openChatGPT').href='https://chatgpt.com/?q='+encodeURIComponent(TEACHER_PROMPT);
+
+$('#mdfile').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  try{$('#txt').value=await f.text();setMsg('已讀取 '+f.name+'，請按「預覽檢查」。',true)}
+  catch(err){setMsg('讀取檔案失敗',false)}
+};
+$('#loadMd').onclick=()=>{
+  const txt=$('#txt').value.trim();
+  if(txt.length<20){setMsg('請先貼上或上傳 Markdown。',false);return}
+  try{
+    const r=parseLessonMarkdown(txt);
+    const ok=r.chapters.every(c=>c.questions.every(q=>q.q&&q.options.length>=2));
+    if(!ok)throw new Error('題目不完整');
+    lesson=r;
+    const totalQ=r.chapters.reduce((n,c)=>n+c.questions.length,0);
+    setMsg(`檢查通過：${r.title}　／　${r.chapters.length} 座島　／　共 ${totalQ} 題。可下載放到網站根目錄。`,true);
+    showPreview(r);
+  }catch(err){setMsg('載入失敗：請確認 Markdown 格式（# 教材、## 章節、### 題目、答案：A）',false);showPreview(null)}
+};
+$('#dlMd').onclick=()=>{
+  if(!lesson){setMsg('請先「預覽檢查」通過後再下載。',false);return}
+  downloadText('lesson.md',lessonToMarkdown(lesson),'text/markdown;charset=utf-8');
+  setMsg('已下載 lesson.md → 放到 GitHub Pages 根目錄再推送。',true);
+};
+$('#dlJson').onclick=()=>{
+  if(!lesson){setMsg('請先「預覽檢查」通過後再下載。',false);return}
+  downloadText('lesson.json',JSON.stringify(lesson,null,2),'application/json');
+  setMsg('已下載 lesson.json → 可放在網站根目錄（優先於 lesson.md）。',true);
+};
+$('#demo').onclick=()=>{
+  lesson=DEMO;
+  $('#txt').value=lessonToMarkdown(DEMO);
+  setMsg('已載入範例教材（太陽系）。',true);
+  showPreview(DEMO);
+};
+</script>
+</body>
+</html>
