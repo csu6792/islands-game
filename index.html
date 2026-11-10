@@ -192,7 +192,14 @@ textarea{height:110px;resize:vertical}
 
 <div class="ov" id="to"><div class="card">
   <h2>老師教材區</h2>
-  <p style="font-size:15px;line-height:1.6"><b>GitHub Pages 分享給全班：</b>教材若只存在你的瀏覽器，學生看不到。請載入後按「下載 lesson.md」，把檔案放到網站資料夾並推上 GitHub；全班開啟同一網址就會讀到同一套島嶼。</p>
+  <p style="font-size:15px;line-height:1.6"><b>GitHub Pages：</b>載入後下載 <code>lesson.md</code> 放到網站根目錄並推送，全班才看得到。多教材請放 <code>lessons.json</code> 清單與多個 md／json 檔。</p>
+  <p style="font-size:14px;margin:10px 0 4px;font-weight:900">切換教材（全班連結可加 <code>?lesson=檔名</code>）</p>
+  <div class="row" style="align-items:center;margin-bottom:8px">
+    <select id="lessonSelect" style="flex:1;font:inherit;font-weight:700;padding:8px 12px;border-radius:12px;border:2px solid var(--line);background:transparent;color:var(--ink)">
+      <option value="">預設 lesson.md / lesson.json</option>
+    </select>
+    <button class="btn alt" id="lessonGo" type="button">切換</button>
+  </div>
   <p style="font-size:14px;margin:10px 0 4px;font-weight:900">① 複製提示詞 → 到 Grok / Gemini 轉教材</p>
   <div class="ai-box" id="teacherPromptBox">
     <div class="ai-title"><span>提示詞</span><button type="button" class="btn copy" id="copyPrompt">複製提示詞</button></div>
@@ -209,6 +216,7 @@ textarea{height:110px;resize:vertical}
   <div class="row">
     <button class="btn alt" id="demo">載入範例</button>
     <button class="btn alt" id="rst">重設星星</button>
+    <button class="btn alt" id="exportStars">匯出本機進度 CSV</button>
     <button class="btn alt" id="tc">關閉</button>
     <button class="btn alt" id="gen">舊版本頁 AI</button>
   </div>
@@ -299,7 +307,8 @@ textarea{height:110px;resize:vertical}
   <p id="rkSub" style="font-size:15px"></p>
   <ol id="rkList" style="padding-left:24px;margin:12px 0;font-size:17px;font-weight:700;line-height:1.8"></ol>
   <div class="row" style="justify-content:center">
-    <button class="btn" id="rkOk">回到大廳</button>
+    <button class="btn" id="rkExport">匯出成績 CSV</button>
+    <button class="btn alt" id="rkOk">回到大廳</button>
   </div>
 </div></div>
 
@@ -326,13 +335,29 @@ try{const s=JSON.parse(localStorage.getItem('isl_stars')||'null');if(Array.isArr
 if(!lesson){lesson=DEMO;if(!stars.length)stars=[]}
 function esc(s){return String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
 function defaultAiAsk(text){
-  const t=String(text||'').replace(/\s+/g,' ').trim().slice(0,80);
-  return `我是國小生。請用簡單的話解釋和「${t}」有關的知識，幫我理解概念。不要直接告訴我選擇題要選哪一個。`;
+  const t=String(text||'').replace(/\s+/g,' ').trim().slice(0,100);
+  return `我是國小生。我想理解：「${t}」。請用簡單的話說明相關知識與原因，不要直接告訴我選擇題要選哪一個，也不要列出 A B C D。`;
+}
+function isGenericAiAsk(s){
+  const t=String(s||'');
+  if(t.length<12)return true;
+  // 常見空泛模板（未帶入具體主題）
+  return /請解釋和這題有關|和這題有關的知識|本島主題|相關的知識，不要直接說選|不要直接說選哪一個/.test(t)
+    && !/「.+」/.test(t);
 }
 function getAiAsk(q,ch){
-  if(q&&q.aiAsk)return q.aiAsk;
-  if(ch&&ch.aiAsk)return ch.aiAsk;
-  return defaultAiAsk(q&&q.q||ch&&ch.title||'');
+  const topic=(q&&q.q)||(ch&&(ch.title||ch.summary))||'';
+  const raw=(q&&q.aiAsk)||(ch&&ch.aiAsk)||'';
+  // 有題目時：一定把題幹放進問句，避免只複製到空泛句子
+  if(q&&q.q){
+    if(raw&&!isGenericAiAsk(raw)&&raw.includes(q.q.slice(0,8)))return raw;
+    if(raw&&!isGenericAiAsk(raw)){
+      return `我是國小生。題目是：「${q.q}」。${raw.replace(/^我是國小生[。.]?\s*/,'')}`.replace(/\s+/g,' ').trim();
+    }
+    return defaultAiAsk(q.q);
+  }
+  if(raw&&!isGenericAiAsk(raw))return raw;
+  return defaultAiAsk(topic||ch&&ch.title||'這單元');
 }
 function aiBoxHtml(prompt,id){
   return `<div class="ai-box" id="${id||''}">
@@ -771,7 +796,7 @@ function renderQ(){
     else{b.classList.add('bad');b.disabled=true;$('#m').textContent='💪 再想想看，再試一次！也可先複製上方問句去問 AI。'}});
 }
 function finish(){
-  const first=!stars[cur];stars[cur]=true;save();setHUD();
+  const first=!stars[cur];stars[cur]=true;save();saveStars();setHUD();
   let raceBonus='';
   if(typeof raceOnIslandDone==='function'){
     const pts=raceOnIslandDone(cur);
@@ -794,6 +819,7 @@ const TEACHER_PROMPT=`你是國小老師的助理。請依使用者上傳或貼�
 3. 每章 2 到 3 題四選一
 4. 只根據教材內容，不要編造教材沒有的知識
 5. 只輸出 Markdown，不要其他說明
+6. 「問AI」必須寫出具體主題或題目大意（用「」包起來），禁止只寫空泛的「請解釋和這題有關的知識」
 
 格式必須如下（請嚴格遵守標題層級與欄位名稱）：
 
@@ -801,7 +827,7 @@ const TEACHER_PROMPT=`你是國小老師的助理。請依使用者上傳或貼�
 
 ## 章節名稱
 摘要：給小朋友看的重點（50到100字）
-問AI：我是國小生。請用簡單的話解釋本島主題，不要告訴我考題答案。
+問AI：我是國小生。請用簡單的話說明「本章主題關鍵字」，不要告訴我考題答案。
 
 ### 題目
 題目文字？
@@ -811,7 +837,7 @@ const TEACHER_PROMPT=`你是國小老師的助理。請依使用者上傳或貼�
 - D. 選項四
 答案：B
 解釋：簡短說明為什麼對
-問AI：我是國小生。請解釋和這題有關的知識，不要直接說選哪一個。
+問AI：我是國小生。題目是：「這裡寫完整題目」。請說明相關知識與原因，不要直接說選哪一個，也不要列出選項。
 
 ### 題目
 （下一題，同上格式）
@@ -1317,23 +1343,160 @@ function onRaceEnd(){
 }
 $('#rkOk').onclick=()=>{hideRoomOvs();roomStatus='none';roomCode='';roomHost=false;mpVisit(-1)};
 
-async function loadSharedLesson(){
-  // GitHub Pages：全班共用站上的 lesson.json / lesson.md
+let lessonCatalog=[]; // [{id,title,file}]
+let currentLessonKey='';
+
+function getLessonQuery(){
+  try{return new URLSearchParams(location.search).get('lesson')||''}catch(e){return ''}
+}
+function setLessonQuery(key){
   try{
-    const r=await fetch('lesson.json',{cache:'no-store'});
-    if(r.ok){const j=await r.json();if(j&&Array.isArray(j.chapters)&&j.chapters.length)return j}
+    const u=new URL(location.href);
+    if(key)u.searchParams.set('lesson',key);else u.searchParams.delete('lesson');
+    history.replaceState(null,'',u.pathname+u.search+u.hash);
   }catch(e){}
+}
+async function fetchLessonFile(file){
+  if(!file)return null;
+  const name=file.trim();
   try{
-    const r=await fetch('lesson.md',{cache:'no-store'});
-    if(r.ok){const t=await r.text();if(t.trim().length>20)return parseLessonMarkdown(t)}
+    const r=await fetch(name,{cache:'no-store'});
+    if(!r.ok)return null;
+    if(/\.json$/i.test(name)){
+      const j=await r.json();
+      if(j&&Array.isArray(j.chapters)&&j.chapters.length)return j;
+    }else{
+      const t=await r.text();
+      if(t.trim().length>20)return parseLessonMarkdown(t);
+    }
   }catch(e){}
   return null;
 }
+async function loadCatalog(){
+  try{
+    const r=await fetch('lessons.json',{cache:'no-store'});
+    if(r.ok){
+      const j=await r.json();
+      if(Array.isArray(j))lessonCatalog=j.filter(x=>x&&x.file);
+      else if(j&&Array.isArray(j.lessons))lessonCatalog=j.lessons.filter(x=>x&&x.file);
+    }
+  }catch(e){}
+  // 若沒有 catalog，仍提供常見檔名
+  if(!lessonCatalog.length){
+    lessonCatalog=[
+      {id:'default',title:'預設教材 (lesson.md)',file:'lesson.md'},
+      {id:'json',title:'預設教材 (lesson.json)',file:'lesson.json'}
+    ];
+  }
+  const sel=$('#lessonSelect');
+  if(sel){
+    const cur=getLessonQuery();
+    sel.innerHTML=lessonCatalog.map(it=>{
+      const v=it.id||it.file;
+      const label=it.title||it.file;
+      return `<option value="${esc(v)}" data-file="${esc(it.file)}">${esc(label)}</option>`;
+    }).join('');
+    // 若 query 是檔名也試著選中
+    if(cur){
+      const hit=[...sel.options].find(o=>o.value===cur||o.getAttribute('data-file')===cur);
+      if(hit)sel.value=hit.value;
+    }
+  }
+}
+function resolveLessonFile(key){
+  if(!key)return null;
+  const hit=lessonCatalog.find(x=>(x.id||x.file)===key||x.file===key);
+  if(hit)return hit.file;
+  // 直接當檔名
+  if(/\.(md|json)$/i.test(key)||key.includes('.'))return key;
+  return key+'.md';
+}
+async function loadSharedLesson(preferredKey){
+  const key=preferredKey||getLessonQuery()||'';
+  currentLessonKey=key;
+  if(key){
+    const file=resolveLessonFile(key);
+    const les=await fetchLessonFile(file);
+    if(les)return les;
+  }
+  // 預設
+  let les=await fetchLessonFile('lesson.json');
+  if(les)return les;
+  les=await fetchLessonFile('lesson.md');
+  if(les)return les;
+  return null;
+}
+function starsStorageKey(){
+  const k=currentLessonKey||getLessonQuery()||'default';
+  return 'isl_stars_'+k;
+}
+function exportRaceCSV(){
+  const rows=[['排名','暱稱','分數','角色','房間','教材','時間']];
+  const ranked=[...racePlayers.values()].sort((a,b)=>b.score-a.score);
+  ranked.forEach((p,i)=>{
+    rows.push([
+      i+1,
+      p.name||'',
+      p.score|0,
+      p.isHost?'房主':'玩家',
+      roomCode||'',
+      (lesson&&lesson.title)||'',
+      new Date().toISOString()
+    ]);
+  });
+  const csv=rows.map(r=>r.map(c=>{
+    const s=String(c).replace(/"/g,'""');
+    return /[",\n]/.test(s)?'"'+s+'"':s;
+  }).join(',')).join('\n');
+  downloadText('race-scores.csv','\uFEFF'+csv,'text/csv;charset=utf-8');
+}
+function exportStarsCSV(){
+  const rows=[['島嶼','章節','完成','教材']];
+  (lesson.chapters||[]).forEach((ch,i)=>{
+    rows.push([i+1,ch.title||'',stars[i]?'是':'否',lesson.title||'']);
+  });
+  const csv=rows.map(r=>r.map(c=>{
+    const s=String(c).replace(/"/g,'""');
+    return /[",\n]/.test(s)?'"'+s+'"':s;
+  }).join(',')).join('\n');
+  downloadText('island-progress.csv','\uFEFF'+csv,'text/csv;charset=utf-8');
+}
+async function switchLesson(key){
+  const m=$('#tm');
+  if(m)m.textContent='載入教材中…';
+  const les=await loadSharedLesson(key||'');
+  if(!les){
+    if(m)m.textContent='找不到教材檔，請確認 lessons.json 或檔名是否在網站根目錄。';
+    return false;
+  }
+  lesson=les;
+  currentLessonKey=key||getLessonQuery()||'';
+  setLessonQuery(currentLessonKey);
+  try{const s=JSON.parse(localStorage.getItem(starsStorageKey())||'null');stars=Array.isArray(s)?s:[]}catch(e){stars=[]}
+  if(stars.length!==lesson.chapters.length)stars=lesson.chapters.map(()=>false);
+  saveStars();build();
+  if(m)m.textContent='已切換教材：'+(lesson.title||key);
+  return true;
+}
+$('#lessonGo')&&($('#lessonGo').onclick=async()=>{
+  const sel=$('#lessonSelect');
+  const key=sel?sel.value:'';
+  const file=sel&&sel.selectedOptions[0]?sel.selectedOptions[0].getAttribute('data-file'):'';
+  await switchLesson(key||file||'');
+});
+$('#rkExport')&&($('#rkExport').onclick=()=>exportRaceCSV());
+$('#exportStars')&&($('#exportStars').onclick=()=>{exportStarsCSV();$('#tm').textContent='已下載本機闖關進度 CSV'});
+
+// 覆寫星星存檔 key（依教材）
+const _saveStars=saveStars;
+saveStars=function(){try{localStorage.setItem(starsStorageKey(),JSON.stringify(stars))}catch(e){}};
+
 async function boot(){
-  const shared=await loadSharedLesson();
+  await loadCatalog();
+  const shared=await loadSharedLesson(getLessonQuery());
   if(shared){lesson=shared}
   else if(!lesson){lesson=DEMO}
-  try{const s=JSON.parse(localStorage.getItem('isl_stars')||'null');if(Array.isArray(s))stars=s}catch(e){}
+  try{const s=JSON.parse(localStorage.getItem(starsStorageKey())||'null');if(Array.isArray(s))stars=s}catch(e){}
   if(!Array.isArray(stars)||stars.length!==lesson.chapters.length)stars=lesson.chapters.map(()=>false);
   build();requestAnimationFrame(loop);
 }
