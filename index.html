@@ -157,6 +157,11 @@ textarea{height:110px;resize:vertical}
 @keyframes hp{to{transform:translateX(-50%) scale(1.12)}}
 .pl.done{animation:dn .8s 2}
 @keyframes dn{50%{transform-origin:center;filter:brightness(1.25)}}
+.lesson-pick{display:flex;flex-direction:column;gap:8px;margin:10px 0 4px;max-height:220px;overflow:auto;text-align:left}
+.lesson-pick button{width:100%;text-align:left;border:2.5px solid var(--line);background:transparent;border-radius:16px;padding:12px 14px;font-weight:900;font-size:16px;color:var(--ink)}
+.lesson-pick button:hover,.lesson-pick button[aria-selected="true"]{border-color:var(--brand);background:rgba(192,105,74,.12)}
+.lesson-pick button small{display:block;font-size:12px;color:var(--muted);font-weight:700;margin-top:2px}
+#login .card{max-width:420px}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 
@@ -209,7 +214,11 @@ textarea{height:110px;resize:vertical}
 
 <div class="ov on" id="login"><div class="card">
   <h2>知識島探險家</h2>
-  <p style="font-size:15px;margin:4px 0 0">輸入暱稱，和其他探險家一起上線吧！</p>
+  <p style="font-size:15px;margin:4px 0 0">選一個探險主題，再輸入暱稱吧！</p>
+  <div id="lessonPickWrap">
+    <div class="lesson-pick" id="lessonPick" role="listbox" aria-label="選擇教材"></div>
+    <p id="lessonPickHint" style="font-size:12px;color:var(--muted);font-weight:700;margin:4px 0 8px;text-align:left"></p>
+  </div>
   <input type="text" id="nick" maxlength="12" placeholder="你的暱稱" autocomplete="nickname" aria-label="暱稱">
   <div class="msg" id="lm" role="status"></div>
   <div class="row" style="justify-content:center;margin-top:8px">
@@ -739,7 +748,16 @@ function loop(t){if(document.hidden||(document.querySelector(".ov.on")&&(frameN+
       if(f.rot)f.g.rotation.y=f.rot+Math.sin(t*.3)*.15;
     }
   });
-  birds.forEach(b=>{const a=b.ph+t*b.sp,s=Math.sign(b.sp),f=Math.sin(t*7+b.ph)*.5;b.g.position.set(Math.cos(a)*b.rad,b.h+Math.sin(t*.7+b.ph)*.4,Math.sin(a)*b.rad);b.g.rotation.y=Math.atan2(-Math.sin(a)*s,Math.cos(a)*s);b.L.rotation.z=f;b.Rw.rotation.z=-f});
+  // 海鳥只在早上出現（遊戲時間 05:00–09:00）
+  birds.forEach(b=>{
+    const morning=gameH>=5&&gameH<9;
+    b.g.visible=morning;
+    if(!morning)return;
+    const a=b.ph+t*b.sp,s=Math.sign(b.sp),f=Math.sin(t*7+b.ph)*.5;
+    b.g.position.set(Math.cos(a)*b.rad,b.h+Math.sin(t*.7+b.ph)*.4,Math.sin(a)*b.rad);
+    b.g.rotation.y=Math.atan2(-Math.sin(a)*s,Math.cos(a)*s);
+    b.L.rotation.z=f;b.Rw.rotation.z=-f;
+  });
   // 海豚：成對躍出，依拋物線切線俯仰，尾鰭擺動
   dolphins.forEach(d=>{
     if(!d.active){if(RM){d.wait=1e9;return}d.wait-=dt;
@@ -1096,6 +1114,10 @@ function connectMqtt(){
 
 $('#join').onclick=()=>{
   const n=$('#nick').value.trim();
+  if(!getLessonQuery()&&!pickedLessonKey&&lessonCatalog.length>1){
+    $('#lm').textContent='請先點選一個探險主題';
+    return;
+  }
   if(n.length<1){$('#lm').textContent='請輸入暱稱';return}
   if(n.length>12){$('#lm').textContent='暱稱最多 12 字';return}
   myName=n;myId=randId();myColor=hashColor(n+myId);
@@ -1391,7 +1413,55 @@ async function loadCatalog(){
       {id:'json',title:'預設教材 (lesson.json)',file:'lesson.json'}
     ];
   }
-  // student page: no lessonSelect UI
+  // student page: picker UI on login
+}
+let pickedLessonKey='';
+function renderLessonPicker(){
+  const wrap=$('#lessonPickWrap'), box=$('#lessonPick'), hint=$('#lessonPickHint');
+  if(!box)return;
+  const q=getLessonQuery();
+  if(q){
+    pickedLessonKey=q;
+    const hit=lessonCatalog.find(x=>(x.id||x.file)===q||x.file===q);
+    if(wrap)wrap.hidden=false;
+    let html=`<button type="button" aria-selected="true"><b>📘 ${esc(hit?hit.title:q)}</b><small>網址已指定此教材</small></button>`;
+    const others=lessonCatalog.filter(x=>{const k=x.id||x.file;return k!==q&&x.file!==q});
+    html+=others.map(it=>{
+      const k=it.id||it.file;
+      return `<button type="button" data-k="${esc(k)}"><b>${esc(it.title||it.file)}</b><small>${esc(it.file||'')}</small></button>`;
+    }).join('');
+    box.innerHTML=html;
+    if(hint)hint.textContent='也可以改選其他主題';
+  }else{
+    if(wrap)wrap.hidden=false;
+    const list=lessonCatalog.length?lessonCatalog:[{id:'default',title:'預設教材',file:'lesson.md'}];
+    box.innerHTML=list.map(it=>{
+      const k=it.id||it.file;
+      const sel=pickedLessonKey&&(pickedLessonKey===k||pickedLessonKey===it.file);
+      return `<button type="button" data-k="${esc(k)}" aria-selected="${sel?'true':'false'}"><b>${esc(it.title||it.file)}</b><small>${esc(it.file||'')}</small></button>`;
+    }).join('');
+    if(hint)hint.textContent=pickedLessonKey?'已選擇，可以輸入暱稱進入':'請先點選一個探險主題';
+  }
+  box.querySelectorAll('button[data-k]').forEach(b=>{
+    b.onclick=async()=>{
+      const k=b.getAttribute('data-k');
+      pickedLessonKey=k;
+      setLessonQuery(k);
+      box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-selected','false'));
+      b.setAttribute('aria-selected','true');
+      if(hint)hint.textContent='已選擇，可以輸入暱稱進入';
+      const les=await loadSharedLesson(k);
+      if(les){
+        lesson=les;
+        try{const s=JSON.parse(localStorage.getItem(starsStorageKey())||'null');stars=Array.isArray(s)?s:[]}catch(e){stars=[]}
+        if(stars.length!==lesson.chapters.length)stars=lesson.chapters.map(()=>false);
+        saveStars();build();
+        $('#lm').textContent='已載入：'+(lesson.title||k);
+      }else{
+        $('#lm').textContent='找不到這個教材，請請老師檢查 教材/ 資料夾';
+      }
+    };
+  });
 }
 function resolveLessonFile(key){
   if(!key)return null;
@@ -1402,7 +1472,7 @@ function resolveLessonFile(key){
   return key+'.md';
 }
 async function loadSharedLesson(preferredKey){
-  const key=preferredKey||getLessonQuery()||'';
+  const key=preferredKey||getLessonQuery()||pickedLessonKey||'';
   currentLessonKey=key;
   if(key){
     const file=resolveLessonFile(key);
@@ -1481,7 +1551,8 @@ saveStars=function(){try{localStorage.setItem(starsStorageKey(),JSON.stringify(s
 
 async function boot(){
   await loadCatalog();
-  const shared=await loadSharedLesson(getLessonQuery());
+  renderLessonPicker();
+  const shared=await loadSharedLesson(getLessonQuery()||pickedLessonKey||'');
   if(shared){lesson=shared}
   else if(!lesson){lesson=DEMO}
   try{const s=JSON.parse(localStorage.getItem(starsStorageKey())||'null');if(Array.isArray(s))stars=s}catch(e){}
