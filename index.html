@@ -173,6 +173,36 @@ textarea{height:110px;resize:vertical}
 .lesson-pick button small{display:block;font-size:12px;color:var(--muted);font-weight:700;margin-top:2px}
 #login .card{max-width:420px}
 @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+
+/* 競賽倒數 */
+#cdOv{position:fixed;inset:0;z-index:15;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;background:rgba(40,30,25,.35)}
+#cdOv[hidden]{display:none}
+#cdNum{font-family:var(--f-latin);font-weight:900;font-size:min(46vw,240px);line-height:1;color:#fff;text-shadow:0 6px 0 rgba(0,0,0,.25),0 0 40px rgba(255,200,100,.7);animation:cdPop .9s ease-out}
+#cdNum.go{color:#ffe066;font-size:min(36vw,190px)}
+#cdSub{margin-top:10px;font-weight:900;font-size:18px;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.4)}
+@keyframes cdPop{0%{transform:scale(2.2);opacity:0}25%{transform:scale(1);opacity:1}80%{transform:scale(.92);opacity:1}100%{transform:scale(.7);opacity:.2}}
+/* 即時排行榜 */
+#raceBoard{position:fixed;top:calc(140px + env(safe-area-inset-top,0px));right:var(--gr);z-index:7;background:var(--panel);border-radius:18px;padding:8px 12px;box-shadow:var(--shadow);font-weight:900;font-size:13px;pointer-events:none;min-width:130px;max-width:46vw}
+#raceBoard[hidden]{display:none}
+#raceBoard .bt{font-size:11px;color:var(--muted);margin-bottom:4px;letter-spacing:.08em}
+#raceBoard .rw{display:flex;gap:6px;align-items:center;padding:2px 0;white-space:nowrap}
+#raceBoard .rw .nm{flex:1;overflow:hidden;text-overflow:ellipsis}
+#raceBoard .rw.me{color:var(--brand)}
+#raceBoard .rw.up{animation:rwUp .8s ease-out}
+@keyframes rwUp{0%{transform:scale(1.18);background:rgba(255,224,102,.55)}100%{transform:scale(1);background:transparent}}
+/* 頒獎台 */
+#podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;margin:14px 0 6px;min-height:150px}
+#podium .pdc{flex:1;max-width:130px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-end}
+#podium .medal{font-size:34px;opacity:0;animation:pdDrop .6s cubic-bezier(.3,1.6,.5,1) forwards}
+#podium .who{opacity:0;font-weight:900;font-size:15px;line-height:1.3;margin:2px 0 4px;word-break:break-all;animation:pdIn .5s ease-out forwards}
+#podium .bar{width:100%;border-radius:14px 14px 0 0;transform-origin:bottom;transform:scaleY(0);animation:pdUp .7s cubic-bezier(.2,.9,.3,1) forwards;display:flex;align-items:flex-start;justify-content:center;padding-top:6px;font-family:var(--f-latin);font-weight:900;font-size:22px;color:#fff;text-shadow:0 2px 0 rgba(0,0,0,.2)}
+#podium .p1 .bar{height:110px;background:linear-gradient(#f3c94a,#d9a521)}
+#podium .p2 .bar{height:80px;background:linear-gradient(#c3ccd6,#9aa6b3)}
+#podium .p3 .bar{height:56px;background:linear-gradient(#d9a070,#b9784a)}
+@keyframes pdUp{to{transform:scaleY(1)}}
+@keyframes pdIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes pdDrop{0%{opacity:0;transform:translateY(-30px) scale(.4)}100%{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#podium .medal,#podium .who{animation:none;opacity:1}#podium .bar{animation:none;transform:none}#cdNum{animation:none}}
 </style>
 
 <canvas id="c"></canvas>
@@ -249,6 +279,8 @@ textarea{height:110px;resize:vertical}
   ⏱ <span id="raceTime">--:--</span>　🏆 <span id="raceScore">0</span> 分
 </div>
 
+<div id="raceBoard" hidden></div>
+<div id="cdOv" hidden aria-live="assertive"><div id="cdNum"></div><div id="cdSub"></div></div>
 <div id="starToast" role="status" aria-live="polite"></div>
 
 <div class="ov" id="roomMenu"><div class="card">
@@ -304,6 +336,7 @@ textarea{height:110px;resize:vertical}
 <div class="ov" id="roomRank"><div class="card">
   <h2>🏆 競賽結束</h2>
   <p id="rkSub" style="font-size:15px"></p>
+  <div id="podium"></div>
   <ol id="rkList" style="padding-left:24px;margin:12px 0;font-size:17px;font-weight:700;line-height:1.8"></ol>
   <div class="row" style="justify-content:center">
     <button class="btn" id="rkExport">匯出成績 CSV</button>
@@ -673,16 +706,42 @@ function boatFx(t,dt,f){
 }
 /* ---------- 居民過橋 ---------- */
 let bridgeWalkers=[];
+const bubbleTexCache=new Map();
+function bubbleTex(text){
+  let t=bubbleTexCache.get(text);if(t)return t;
+  t=tex((x,w,h)=>{x.fillStyle='#fffdf5';x.strokeStyle='#5a4030';x.lineWidth=7;
+    const r=26,bx=6,by=6,bw=w-12,bh=h-34;x.beginPath();x.moveTo(bx+r,by);x.arcTo(bx+bw,by,bx+bw,by+bh,r);x.arcTo(bx+bw,by+bh,bx,by+bh,r);x.arcTo(bx,by+bh,bx,by,r);x.arcTo(bx,by,bx+bw,by,r);x.closePath();
+    x.moveTo(w/2-14,by+bh);x.lineTo(w/2,h-4);x.lineTo(w/2+14,by+bh);x.fill();x.stroke();
+    x.fillStyle='#fffdf5';x.fillRect(w/2-12,by+bh-5,24,9);
+    x.fillStyle='#4a3a30';x.font='bold 50px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(text,w/2,by+bh/2+3)},256,128);
+  bubbleTexCache.set(text,t);return t}
+function bubbleText(){
+  const n=lesson.chapters.length,run=raceRunning(),k=run?raceScore:stars.filter(Boolean).length;
+  if(n&&k>=n)return '全部完成！🏆';
+  if(k>0&&k>=n/2)return '快完成了！';
+  if(k>0)return '做得好！';
+  const pool=run?['衝啊！','加油！','你可以的！']:(typeof roomStatus!=='undefined'&&roomStatus==='lobby')?['準備好了嗎？','好期待！']:['加油！','你可以的！','一起探險！'];
+  return pool[Math.floor(Math.random()*pool.length)]}
+function bubbleCheer(text){ // 全部居民同時冒出同一句話（例如答對、出發）
+  const now=typeof lastT==='number'&&lastT!=null?lastT:0;
+  bridgeWalkers.forEach(w=>{w.pending=text;w.nextB=now+Math.random()*.6;w.bOn=false})}
 function addBridgeWalkers(o,span,hubShore){
   const B=o.g.position,d=Math.hypot(B.x,B.z)||1,ux=B.x/d,uz=B.z/d;
   const cnt=lesson.chapters.length>8?1:2,L=span+1.8,cols=[[0xd9573f,0x3b2a20],[0x4a8fb5,0x1c1c1c],[0xe0a63a,0x8a5a2b],[0x7a5cd6,0x2b2521]];
   for(let k=0;k<cnt;k++){
     const c=cols[(o.i*2+k)%4],p=person(c[0],c[1]);p.scale.setScalar(1.25);G.add(p);
-    bridgeWalkers.push({g:p,ux,uz,start:hubShore-.9,span,hubShore,L,lat:(k?1:-1)*.1,sp:.28+.07*((o.i+k)%3),ph:(k*.5+o.i*.173)%1,face:0})}
+    const bs=new THREE.Sprite(new THREE.SpriteMaterial({map:bubbleTex('加油！'),transparent:true,opacity:0,depthTest:false,depthWrite:false}));
+    bs.scale.set(.9,.45,1);bs.position.y=.78;bs.renderOrder=7;bs.visible=false;p.add(bs);
+    bridgeWalkers.push({bs,nextB:null,bOn:false,b0:0,pending:'',g:p,ux,uz,start:hubShore-.9,span,hubShore,L,lat:(k?1:-1)*.1,sp:.28+.07*((o.i+k)%3),ph:(k*.5+o.i*.173)%1,face:0})}
 }
 function bridgeTick(t){
   const tt=RM?0:t;
   bridgeWalkers.forEach(w=>{
+    // 對話泡泡：偶爾冒出 2.6 秒
+    if(w.nextB==null)w.nextB=t+2+Math.random()*8;
+    if(!w.bOn&&t>=w.nextB){w.bOn=true;w.b0=t;const tx=w.pending||bubbleText();w.pending='';w.bs.material.map=bubbleTex(tx);w.bs.material.needsUpdate=true;w.bs.visible=true}
+    if(w.bOn){const u=t-w.b0,D=2.6;if(u>=D){w.bOn=false;w.bs.visible=false;w.bs.material.opacity=0;w.nextB=t+7+Math.random()*9}
+      else{w.bs.material.opacity=Math.min(1,u/.25,(D-u)/.4);w.bs.position.y=.78+Math.min(u,.4)*.15}}
     // 三角波來回走：0→L→0
     const raw=(w.ph+tt*w.sp/w.L)%1,u=raw<.5?raw*2:2-raw*2,dir=raw<.5?1:-1;
     const dist=w.start+u*w.L,rel=(dist-w.hubShore)/w.span,onB=rel>0&&rel<1;
@@ -967,7 +1026,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape'){closeList();closeQ()}});
 
 /* ---------- 答題 ---------- */
 let cur=0,qi=0;
-function raceRunning(){return typeof roomStatus!=='undefined'&&roomStatus==='running'}
+function raceRunning(){return typeof roomStatus!=='undefined'&&roomStatus==='running'&&Date.now()>=roomStartAt} // 倒數期間尚未開放
 function openIsland(i){if(items[i])items[i].bn=1;cur=i;closeList();
   if(!raceRunning()){ // 非競賽模式：不顯示題目，避免賽前先看到題目
     qi=-2;$('#qo').classList.add('on');renderQ();if(typeof mpVisit==='function')mpVisit(i);return}
@@ -1007,7 +1066,7 @@ function finish(){
   let raceBonus='',pts=0;
   if(typeof raceOnIslandDone==='function'){
     pts=raceOnIslandDone(cur);
-    if(pts>0) raceBonus=`<p style="text-align:center;font-weight:900;color:var(--brand)">競賽 +${pts} 分！</p>`;
+    if(pts>0){raceBonus=`<p style="text-align:center;font-weight:900;color:var(--brand)">競賽 +${pts} 分！</p>`;if(typeof bubbleCheer==='function')bubbleCheer(raceScore>=lesson.chapters.length?'全部完成！🏆':'太棒了！🎉')}
   }
   stars[cur]=true;save();saveStars();setHUD();
   // 本場競賽第一次完成這座島：本機顯示通知 + MQTT 廣播給同房以外的人
@@ -1029,7 +1088,7 @@ function flyStar(){if(RM)return;const t=$('#st').getBoundingClientRect(),d=docum
   const a=d.animate([{transform:'scale(.3)',opacity:0},{transform:'scale(1.4)',opacity:1,offset:.3},{transform:`translate(${t.left-innerWidth/2+10}px,${t.top-innerHeight/2}px) scale(.35)`,opacity:1}],{duration:1100,easing:'ease-in-out'});
   a.onfinish=()=>{d.remove();$('#fav').animate([{transform:'scale(1)'},{transform:'scale(1.25)'},{transform:'scale(1)'}],{duration:350})}}
 let _bc=null,_lb=-1;
-function beep(){try{_bc=_bc||new (window.AudioContext||window.webkitAudioContext)();const o=_bc.createOscillator(),g=_bc.createGain();o.frequency.value=880;g.gain.setValueAtTime(.08,_bc.currentTime);g.gain.exponentialRampToValueAtTime(.001,_bc.currentTime+.15);o.connect(g);g.connect(_bc.destination);o.start();o.stop(_bc.currentTime+.16)}catch(e){}}
+function beep(f,len){len=len||.15;try{_bc=_bc||new (window.AudioContext||window.webkitAudioContext)();const o=_bc.createOscillator(),g=_bc.createGain();o.frequency.value=f||880;g.gain.setValueAtTime(.08,_bc.currentTime);g.gain.exponentialRampToValueAtTime(.001,_bc.currentTime+len);o.connect(g);g.connect(_bc.destination);o.start();o.stop(_bc.currentTime+len+.01)}catch(e){}}
 
 /* ---------- 老師：外部 AI → Markdown → 島嶼 ---------- */
 function parseLessonMarkdown(md){
@@ -1441,10 +1500,23 @@ function renderLobbyInfo(data){
   else el.textContent='本局已結束';
   $('#rlStart').hidden=!(roomHost&&roomStatus==='lobby');
 }
+const boardPrev=new Map();
+function renderBoard(){
+  const el=$('#raceBoard');if(!el)return;
+  if(roomStatus!=='running'||!raceRunning()){el.hidden=true;return}
+  const cmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt|0,tb=b.scoreAt|0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
+  const top=[...racePlayers.entries()].filter(([id,p])=>!p.isHost).map(([id,p])=>({id,...p})).sort(cmp).slice(0,3);
+  if(!top.length){el.hidden=true;return}
+  const M=['🥇','🥈','🥉'];
+  el.innerHTML='<div class="bt">即時前三名</div>'+top.map((p,i)=>{const up=boardPrev.has(p.id)&&boardPrev.get(p.id)<p.score;
+    return `<div class="rw${p.id===myId?' me':''}${up?' up':''}"><span>${M[i]}</span><span class="nm">${esc(p.name)}</span><span>${p.score}</span></div>`}).join('');
+  top.forEach(p=>boardPrev.set(p.id,p.score));
+  el.hidden=false}
 function renderLobbyPlayers(){
   const ul=$('#rlPlayers');if(!ul)return;
   const rankCmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt|0,tb=b.scoreAt|0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
   const arr=[...racePlayers.values()].sort(rankCmp);
+  renderBoard();
   ul.innerHTML=arr.map(p=>`<li style="padding:6px 0;border-bottom:1px solid var(--line)">${esc(p.name)}${p.isHost?' <small style="color:var(--muted)">房主</small>':''}　<strong>${p.score}</strong> 分</li>`).join('')||'<li style="color:var(--muted)">還沒有玩家</li>';
 }
 function showRoomLobby(){
@@ -1458,7 +1530,7 @@ function showRoomLobby(){
 $('#rlStart').onclick=()=>{
   if(!roomHost||roomStatus!=='lobby')return;
   const now=Date.now();
-  roomStartAt=now;roomEndAt=now+roomDuration*1000;roomStatus='running';
+  roomStartAt=now+3000;roomEndAt=roomStartAt+roomDuration*1000;roomStatus='running'; // 3 秒倒數後才開放題目
   const state={code:roomCode,hostId:myId,hostName:myName,status:'running',durationSec:roomDuration,startAt:roomStartAt,endAt:roomEndAt,ts:now};
   mqttClient.publish(roomTopic(),JSON.stringify(state),{qos:0,retain:true});
   // 重置自己分數（房主不計分）
@@ -1472,24 +1544,38 @@ $('#rlLeave').onclick=()=>{
     if(roomHost)mqttClient.publish(roomTopic(),JSON.stringify({code:roomCode,status:'ended',ts:Date.now()}),{qos:0,retain:true});
   }
   stopRaceTimer();roomStatus='none';roomCode='';roomHost=false;
-  $('#raceHud').hidden=true;hideRoomOvs();
+  $('#raceHud').hidden=true;$('#raceBoard').hidden=true;hideCd();hideRoomOvs();
 };
 
+let cdLast=-1,cdDone=true,cdHideT=null;
+function showCd(text,go,sub){
+  const ov=$('#cdOv'),n=$('#cdNum');ov.hidden=false;n.className=go?'go':'';n.textContent=text;$('#cdSub').textContent=sub||'';
+  n.style.animation='none';void n.offsetWidth;n.style.animation='';
+  clearTimeout(cdHideT);if(go)cdHideT=setTimeout(()=>{ov.hidden=true},900)}
+function hideCd(){clearTimeout(cdHideT);const o=$('#cdOv');if(o)o.hidden=true}
+function fmtTime(ms){const l=Math.max(0,ms),m=Math.floor(l/60000),s=Math.floor((l%60000)/1000);return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
 function onRaceStart(){
-  hideRoomOvs();
+  hideRoomOvs();closeQ();
   $('#raceHud').hidden=false;
   $('#raceScore').textContent=raceScore;
-  // 競賽中重置本局星星進度概念：用 raceDone 獨立計算
+  cdLast=-1;cdDone=Date.now()>=roomStartAt; // 中途加入的人不再倒數
   stopRaceTimer();
-  raceTimer=setInterval(tickRace,250);
+  raceTimer=setInterval(tickRace,100);
   tickRace();
-  boom(10);
+  if(cdDone){boom(10);renderBoard()}
 }
 function tickRace(){
   if(roomStatus!=='running')return;
-  const left=Math.max(0,roomEndAt-Date.now());
-  const m=Math.floor(left/60000),s=Math.floor((left%60000)/1000);
-  $('#raceTime').textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  const now=Date.now();
+  if(now<roomStartAt){ // 倒數中：題目尚未開放
+    const sec=Math.ceil((roomStartAt-now)/1000);
+    $('#raceTime').textContent=fmtTime(roomEndAt-roomStartAt);
+    $('#raceBoard').hidden=true;
+    if(sec!==cdLast){cdLast=sec;showCd(String(sec),false,'準備好！題目馬上開放');beep(660,.18)}
+    return}
+  if(!cdDone){cdDone=true;showCd('GO!',true);beep(1175,.5);boom(14);if(typeof bubbleCheer==='function')bubbleCheer('出發！');renderBoard()}
+  const left=Math.max(0,roomEndAt-now);
+  $('#raceTime').textContent=fmtTime(left);
   $('#raceHud').classList.toggle('hot',left>0&&left<10000);
   const sec=Math.ceil(left/1000);if(left>0&&left<=10000&&sec!==_lb){_lb=sec;beep()}
   if(left<=0){
@@ -1516,14 +1602,23 @@ function raceOnIslandDone(islandIdx){
 
 function onRaceEnd(){
   if(roomStatus==='ended'&&$('#roomRank').classList.contains('on'))return;
-  roomStatus='ended';stopRaceTimer();$('#raceHud').hidden=true;closeQ();
+  roomStatus='ended';stopRaceTimer();$('#raceHud').hidden=true;$('#raceBoard').hidden=true;hideCd();boardPrev.clear();closeQ();
   // 排名（排除房主）
   const rankCmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt|0,tb=b.scoreAt|0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
   const ranked=[...racePlayers.values()].filter(p=>!p.isHost).sort(rankCmp);
   const all=[...racePlayers.values()].sort(rankCmp);
   $('#rkSub').textContent=ranked.length?`共 ${ranked.length} 位探險家參賽`:'本局沒有計分玩家（房主不計分）';
-  $('#rkList').innerHTML=(ranked.length?ranked:all).map((p,i)=>`<li>${esc(p.name)}　${p.score} 分${p.isHost?'（房主）':''}${i===0&&!p.isHost?' 👑':''}</li>`).join('')||'<li>無資料</li>';
-  hideRoomOvs();$('#roomRank').classList.add('on');boom(24);
+  const list=ranked.length?ranked:all,pod=list.slice(0,3),rest=list.slice(3);
+  // 頒獎台：顯示順序 2-1-3；動畫依序 3→2→1 彈出
+  const order=[1,0,2].filter(k=>pod[k]),dly={2:.3,1:1.2,0:2.1},MD=['👑','🥈','🥉'];
+  $('#podium').innerHTML=order.map(k=>{const p=pod[k],d=dly[k];
+    return `<div class="pdc p${k+1}"><div class="medal" style="animation-delay:${d+.55}s">${MD[k]}</div><div class="who" style="animation-delay:${d+.6}s">${esc(p.name)}</div><div class="bar" style="animation-delay:${d}s">${p.score}</div></div>`}).join('');
+  $('#rkList').start=4;
+  $('#rkList').innerHTML=rest.map(p=>`<li>${esc(p.name)}　${p.score} 分</li>`).join('');
+  $('#rkList').style.display=rest.length?'':'none';
+  hideRoomOvs();$('#roomRank').classList.add('on');
+  [2,1,0].forEach(k=>{if(pod[k])setTimeout(()=>beep(k===0?1046:k===1?784:659,.22),(dly[k]*1000)+500)});
+  if(pod[0])setTimeout(()=>boom(30),2700);else boom(10);
 }
 $('#rkOk').onclick=()=>{hideRoomOvs();roomStatus='none';roomCode='';roomHost=false;mpVisit(-1)};
 
