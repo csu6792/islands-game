@@ -80,7 +80,7 @@ ol.steps{margin:8px 0 0 1.2em;padding:0;font-size:14px;line-height:1.7;font-weig
       <h1>老師教材區</h1>
       <div class="sub">KNOWLEDGE ISLAND · TEACHER</div>
     </div>
-    <a class="btn alt" href="./知識島探險.html">回知識島 ➜</a>
+    <a class="btn alt" href="./知識島探險家.html">回知識島 ➜</a>
   </div>
 
   <div class="card">
@@ -89,8 +89,8 @@ ol.steps{margin:8px 0 0 1.2em;padding:0;font-size:14px;line-height:1.7;font-weig
       <li>用下方提示詞，把教材丟給 Grok / Gemini / ChatGPT 轉成 Markdown</li>
       <li>把產出的 Markdown 貼上來（或上傳 .md）→ 按「預覽檢查」</li>
       <li>確認無誤後「下載 lesson.md」或「lesson.json」</li>
-      <li>放到 GitHub Pages 網站根目錄（和知識島 HTML 同層）並推送</li>
-      <li>多教材可再加 <code>lessons.json</code>，學生用 <code>?lesson=檔名</code> 開啟</li>
+      <li>放到網站的 <code>教材/</code> 資料夾（和知識島 HTML 同層下的資料夾）並推送</li>
+      <li>多教材可在 <code>教材/lessons.json</code> 列清單，學生用 <code>?lesson=檔名</code> 開啟</li>
     </ol>
   </div>
 
@@ -132,7 +132,7 @@ ol.steps{margin:8px 0 0 1.2em;padding:0;font-size:14px;line-height:1.7;font-weig
 
   <div class="card">
     <h2>多教材（選用）</h2>
-    <p>在網站根目錄放多個 <code>.md</code> / <code>.json</code>，並新增 <code>lessons.json</code>：</p>
+    <p>在 <code>教材/</code> 資料夾放多個 <code>.md</code> / <code>.json</code>，並新增 <code>教材/lessons.json</code>：</p>
     <pre style="background:var(--line);padding:12px;border-radius:12px;overflow:auto;font-size:12px;line-height:1.5">{
   {
     "id": "solar",
@@ -145,7 +145,7 @@ ol.steps{margin:8px 0 0 1.2em;padding:0;font-size:14px;line-height:1.7;font-weig
     "file": "植物.md"
   }
 ]</pre>
-    <p class="hint">學生連結：<code>知識島探險.html?lesson=solar</code> 或 <code>?lesson=太陽系.md</code></p>
+    <p class="hint">學生連結：<code>知識島探險家.html?lesson=solar</code> 或 <code>?lesson=太陽系.md</code>（檔案實際在 <code>教材/</code> 內）</p>
   </div>
 </div>
 
@@ -185,7 +185,7 @@ const TEACHER_PROMPT=`你是國小老師的助理。請依使用者上傳或貼�
 ## 下一章節名稱
 （同上）
 
-請直接給我Md檔案，不要省略、不要只給部分、不要加額外說明。
+請直接給我完整的 Markdown 檔內容，不要省略、不要只給部分、不要加額外說明。
 `;
 
 const DEMO={title:"太陽系",chapters:[
@@ -303,12 +303,12 @@ $('#loadMd').onclick=()=>{
 $('#dlMd').onclick=()=>{
   if(!lesson){setMsg('請先「預覽檢查」通過後再下載。',false);return}
   downloadText('lesson.md',lessonToMarkdown(lesson),'text/markdown;charset=utf-8');
-  setMsg('已下載 lesson.md → 放到 GitHub Pages 根目錄再推送。',true);
+  setMsg('已下載 lesson.md → 放到網站的 教材/ 資料夾再推送。',true);
 };
 $('#dlJson').onclick=()=>{
   if(!lesson){setMsg('請先「預覽檢查」通過後再下載。',false);return}
   downloadText('lesson.json',JSON.stringify(lesson,null,2),'application/json');
-  setMsg('已下載 lesson.json → 可放在網站根目錄（優先於 lesson.md）。',true);
+  setMsg('已下載 lesson.json → 放到 教材/ 資料夾（優先於 lesson.md）。',true);
 };
 $('#demo').onclick=()=>{
   lesson=DEMO;
