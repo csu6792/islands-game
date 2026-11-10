@@ -205,7 +205,7 @@ textarea{height:110px;resize:vertical}
   <div class="row" style="justify-content:center;margin-top:8px">
     <button class="btn" id="join">進入島嶼 ➜</button>
   </div>
-  <p style="font-size:12px;color:var(--muted);margin-top:10px">即時連線</p>
+  <p style="font-size:12px;color:var(--muted);margin-top:10px">透過 MQTTGO.io 即時連線</p>
 </div></div>
 
 <div id="online" hidden>
@@ -1293,9 +1293,18 @@ function setLessonQuery(key){
     history.replaceState(null,'',u.pathname+u.search+u.hash);
   }catch(e){}
 }
+// 教材資料夾（結尾要有 /）。所有 lesson.md / lesson.json / lessons.json 都從此讀取
+const LESSON_DIR='教材/';
+function lessonPath(file){
+  if(!file)return '';
+  let f=String(file).trim().replace(/^\.\//,'');
+  // 已含路徑就不重複加前綴
+  if(f.includes('/'))return f;
+  return LESSON_DIR+f.replace(/^\//,'');
+}
 async function fetchLessonFile(file){
   if(!file)return null;
-  const name=file.trim();
+  const name=lessonPath(file);
   try{
     const r=await fetch(name,{cache:'no-store'});
     if(!r.ok)return null;
@@ -1311,14 +1320,14 @@ async function fetchLessonFile(file){
 }
 async function loadCatalog(){
   try{
-    const r=await fetch('lessons.json',{cache:'no-store'});
+    const r=await fetch(lessonPath('lessons.json'),{cache:'no-store'});
     if(r.ok){
       const j=await r.json();
       if(Array.isArray(j))lessonCatalog=j.filter(x=>x&&x.file);
       else if(j&&Array.isArray(j.lessons))lessonCatalog=j.lessons.filter(x=>x&&x.file);
     }
   }catch(e){}
-  // 若沒有 catalog，仍提供常見檔名
+  // 若沒有 catalog，仍提供常見檔名（會自動加 教材/ 前綴）
   if(!lessonCatalog.length){
     lessonCatalog=[
       {id:'default',title:'預設教材 (lesson.md)',file:'lesson.md'},
@@ -1341,13 +1350,13 @@ async function loadSharedLesson(preferredKey){
   if(key){
     const file=resolveLessonFile(key);
     const les=await fetchLessonFile(file);
-    if(les)return les;
+    if(les&&Array.isArray(les.chapters)&&les.chapters.length)return les;
   }
-  // 預設
+  // 預設：教材/lesson.json → 教材/lesson.md
   let les=await fetchLessonFile('lesson.json');
-  if(les)return les;
+  if(les&&Array.isArray(les.chapters)&&les.chapters.length)return les;
   les=await fetchLessonFile('lesson.md');
-  if(les)return les;
+  if(les&&Array.isArray(les.chapters)&&les.chapters.length)return les;
   return null;
 }
 function starsStorageKey(){
@@ -1395,7 +1404,7 @@ async function switchLesson(key){
   if(m)m.textContent='載入教材中…';
   const les=await loadSharedLesson(key||'');
   if(!les){
-    if(m)m.textContent='找不到教材檔，請確認 lessons.json 或檔名是否在網站根目錄。';
+    if(m)m.textContent='找不到教材檔，請確認 教材/ 資料夾內的 lessons.json 或 md／json 檔名。';
     return false;
   }
   lesson=les;
