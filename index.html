@@ -157,6 +157,16 @@ textarea{height:110px;resize:vertical}
 @keyframes hp{to{transform:translateX(-50%) scale(1.12)}}
 .pl.done{animation:dn .8s 2}
 @keyframes dn{50%{transform-origin:center;filter:brightness(1.25)}}
+/* 星星廣播通知：從右滑入 → 停中 → 往左滑出 */
+#starToast{position:fixed;top:calc(90px + env(safe-area-inset-top,0px));left:50%;z-index:16;transform:translateX(120vw);opacity:0;pointer-events:none;white-space:nowrap;background:var(--panel);color:var(--ink);border-radius:999px;padding:12px 22px;font-weight:900;font-size:16px;box-shadow:var(--shadow);border:2px solid var(--brand)}
+#starToast.show{animation:starToastInOut 4.2s ease-in-out forwards}
+#starToast b{color:var(--brand);font-weight:900}
+@keyframes starToastInOut{
+  0%{transform:translateX(120vw);opacity:0}
+  12%{transform:translateX(-50%);opacity:1}
+  72%{transform:translateX(-50%);opacity:1}
+  100%{transform:translateX(-160vw);opacity:0}
+}
 .lesson-pick{display:flex;flex-direction:column;gap:8px;margin:10px 0 4px;max-height:220px;overflow:auto;text-align:left}
 .lesson-pick button{width:100%;text-align:left;border:2.5px solid var(--line);background:transparent;border-radius:16px;padding:12px 14px;font-weight:900;font-size:16px;color:var(--ink)}
 .lesson-pick button:hover,.lesson-pick button[aria-selected="true"]{border-color:var(--brand);background:rgba(192,105,74,.12)}
@@ -238,6 +248,8 @@ textarea{height:110px;resize:vertical}
 <div id="raceHud" hidden style="position:fixed;top:calc(90px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:7;background:var(--panel);border-radius:999px;padding:8px 18px;box-shadow:var(--shadow);font-weight:900;font-size:16px;pointer-events:none">
   ⏱ <span id="raceTime">--:--</span>　🏆 <span id="raceScore">0</span> 分
 </div>
+
+<div id="starToast" role="status" aria-live="polite"></div>
 
 <div class="ov" id="roomMenu"><div class="card">
   <h2>主島大廳</h2>
@@ -914,6 +926,13 @@ function finish(){
     const pts=raceOnIslandDone(cur);
     if(pts>0) raceBonus=`<p style="text-align:center;font-weight:900;color:var(--brand)">競賽 +${pts} 分！</p>`;
   }
+  // 第一次拿到星星：本機顯示通知 + MQTT 廣播給同站其他人
+  if(first){
+    const ch=lesson.chapters[cur];
+    const title=ch?ch.title:('第'+(cur+1)+'島');
+    showStarToast(myName||'探險家',title);
+    publishStarEvent(cur);
+  }
   $('#qc').innerHTML=`<div class="big">⭐</div><h2 style="text-align:center">這座島完成了！</h2>${raceBonus}<div class="row" style="justify-content:center"><button class="btn" id="x">回到地圖</button></div>`;
   $('#x').onclick=closeQ;boom(14);flyStar();pulseIsland(cur);
   if(first&&lesson.chapters.every((_,i)=>stars[i])){closeQ();setTimeout(()=>{$('#wo').classList.add('on');boom(50);showRainbow()},300)}
@@ -963,10 +982,63 @@ function parseLessonMarkdown(md){
 
 /* ---------- 多人 MQTT（mqttgo.io） ---------- */
 const MP_TOPIC='islandquest/v1/players';
+const EVENT_TOPIC='islandquest/v1/events';
 const PALETTE=[[0xd9573f,0x3b2a20],[0x4a8fb5,0x1c1c1c],[0xe0a63a,0x8a5a2b],[0x2bb673,0x1a3a28],[0x9b59b6,0x2a1a3a],[0xe67e22,0x4a2a10],[0x1abc9c,0x0a3a30],[0xe91e63,0x3a0a20]];
 let mqttClient=null,myId='',myName='',myColor=0,myIsland=-1;
 const peers=new Map(); // id -> {name,color,island,g,label,last}
 const peerAvatars=new Map(); // id -> {g, labelEl}
+
+/* 星星廣播通知 */
+const starToastQueue=[];
+let starToastBusy=false;
+function showStarToast(name,islandTitle){
+  const text=`⭐ <b>${esc(name||'探險家')}</b>　完成「${esc(islandTitle||'島嶼')}」拿到星星！`;
+  starToastQueue.push(text);
+  runStarToastQueue();
+}
+function runStarToastQueue(){
+  if(starToastBusy||!starToastQueue.length)return;
+  starToastBusy=true;
+  const el=$('#starToast');
+  if(!el){starToastBusy=false;return}
+  el.innerHTML=starToastQueue.shift();
+  el.classList.remove('show');
+  // 強制重啟動畫
+  void el.offsetWidth;
+  el.classList.add('show');
+  const done=()=>{
+    el.classList.remove('show');
+    el.innerHTML='';
+    starToastBusy=false;
+    if(starToastQueue.length) setTimeout(runStarToastQueue,180);
+  };
+  // 動畫總長約 4.2s
+  setTimeout(done,4300);
+}
+function publishStarEvent(islandIdx){
+  if(!mqttClient||!mqttClient.connected||!myName)return;
+  const ch=lesson&&lesson.chapters&&lesson.chapters[islandIdx];
+  const title=ch?ch.title:('第'+(islandIdx+1)+'島');
+  const payload=JSON.stringify({
+    type:'star',
+    id:myId,
+    name:myName,
+    island:islandIdx,
+    title:title,
+    ts:Date.now()
+  });
+  try{mqttClient.publish(EVENT_TOPIC,payload,{qos:0,retain:false})}catch(e){}
+}
+function handleEventMsg(topic,payload){
+  if(topic!==EVENT_TOPIC)return;
+  try{
+    const data=JSON.parse(payload.toString());
+    if(!data||data.type!=='star')return;
+    // 自己發的也顯示（本機已在 finish 呼叫一次，這裡跳過避免重複）
+    if(data.id===myId)return;
+    showStarToast(data.name,data.title);
+  }catch(e){}
+}
 
 function randId(){return 'p_'+Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4)}
 function hashColor(s){let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h%PALETTE.length}
@@ -1077,6 +1149,7 @@ function connectMqtt(){
   mqttClient.on('connect',()=>{
     lm.textContent='已連線！';
     mqttClient.subscribe(MP_TOPIC+'/#',{qos:0});
+    mqttClient.subscribe(EVENT_TOPIC,{qos:0});
     myIsland=-1;
     ensurePeerAvatar(myId,myName,myColor,-1);
     publishPresence();
@@ -1085,7 +1158,10 @@ function connectMqtt(){
     updateOnlineList();
     setTimeout(()=>lm.textContent='',800);
   });
-  mqttClient.on('message',(topic,payload)=>handlePeerMsg(topic,payload));
+  mqttClient.on('message',(topic,payload)=>{
+    handlePeerMsg(topic,payload);
+    handleEventMsg(topic,payload);
+  });
   mqttClient.on('error',err=>{lm.textContent='連線錯誤：'+(err.message||'未知');});
   mqttClient.on('reconnect',()=>{lm.textContent='重新連線中…';});
   mqttClient.on('close',()=>{/* 保持 UI */});
