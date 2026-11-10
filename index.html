@@ -1,5 +1,9 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
-<title>知識島探險</title>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}.clk{display:flex;align-items:center;gap:10px;background:var(--panel);border-radius:999px;padding:10px 18px 10px 14px;box-shadow:var(--shadow);font-weight:800;color:var(--ink)}
+.clk .ic{font-size:24px;line-height:1}
+.clk .p{font-size:15px}
+.clk .t{font-family:var(--f-latin);font-size:20px;font-weight:800;letter-spacing:.04em;color:var(--brand);font-variant-numeric:tabular-nums}
+</style></head><body>
+<title>知識島探險家</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jost:wght@500;600&family=Noto+Sans+TC:wght@500;700;900&display=swap">
 <style>
@@ -117,6 +121,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .ai-box .ai-tip{font-size:12px;color:var(--muted);font-weight:700;margin:0}
 .ai-box .btn.copy{padding:7px 14px;font-size:13px;box-shadow:none}
 .ai-box .btn.copy.ok{background:var(--ok)}
+.ai-box .ai-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.ai-box .ai-link{display:inline-flex;align-items:center;font-size:13px;font-weight:900;color:var(--teal);text-decoration:none;border:2px solid var(--teal);border-radius:999px;padding:5px 12px}
+.ai-box .ai-link:hover{background:var(--teal);color:#fff}
 textarea,input[type=file]{width:100%;font:inherit;font-size:15px;padding:10px;border-radius:14px;border:2px solid var(--line);background:transparent;color:var(--ink)}
 input[type=file]::file-selector-button{font:inherit;font-weight:700;border:0;border-radius:999px;background:var(--ink);color:var(--panel);padding:6px 14px;margin-right:10px}
 textarea{height:110px;resize:vertical}
@@ -150,11 +157,8 @@ textarea{height:110px;resize:vertical}
   <div class="row1">
     <div class="brand">
       <h1>知識島</h1>
-      <div class="sub"><b>探險</b><small>ISLAND QUEST</small></div>
-      <button class="home" id="tb" aria-label="老師教材區">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 11 12 4l8.5 7M6 9.5V20h12V9.5M10 20v-5.5h4V20"/></svg>
-        <span>老師</span>
-      </button>
+      <div class="sub"><b>探險家</b><small>ISLAND QUEST</small></div>
+
     </div>
     <button class="pill" id="lbtn" aria-expanded="false" aria-controls="lp">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>清單
@@ -166,12 +170,7 @@ textarea{height:110px;resize:vertical}
 <div id="hint"><span>拖曳旋轉・滾輪或雙指縮放・點小島開始挑戰</span></div>
 
 <div id="bot">
-  <div class="seg" id="tod" role="group" aria-label="時間">
-    <button data-t="dawn" aria-label="清晨" title="清晨"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 18h18M7 18a5 5 0 0 1 10 0M12 5v5M10 7l2-2 2 2M4.6 11.6l1.4 1.4M19.4 11.6 18 13M3 14.5h1.5M19.5 14.5H21"/></svg></button>
-    <button data-t="day" aria-label="白天" title="白天"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg></button>
-    <button data-t="dusk" aria-label="黃昏" title="黃昏"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 16h18M7 16a5 5 0 0 1 10 0M8 20h8M12 4v5M10 7l2 2 2-2"/></svg></button>
-    <button data-t="night" aria-label="夜晚" title="夜晚"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></svg></button>
-  </div>
+  <div class="clk" id="clk" role="status" aria-label="遊戲時間"><span class="ic" id="clkI">🌅</span><span class="p" id="clkP">清晨</span><span class="t" id="clkT">07:00</span></div>
   <div class="seg" role="group" aria-label="視角">
     <button id="auto" aria-pressed="true" aria-label="自動環繞" title="自動環繞"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.8" r="1.8"/><path d="M12 8.5v6M12 14.5 9 21M12 14.5 15 21M7.5 11.5l4.5-3 4.5 3.5"/></svg></button>
     <button id="view" aria-pressed="false" aria-label="俯視切換" title="俯視切換"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="4.5"/><g fill="currentColor" stroke="none"><circle cx="9" cy="9" r="1.5"/><circle cx="15" cy="9" r="1.5"/><circle cx="9" cy="15" r="1.5"/><circle cx="15" cy="15" r="1.5"/></g></svg></button>
@@ -190,39 +189,6 @@ textarea{height:110px;resize:vertical}
 
 <div class="ov" id="qo"><div class="card" id="qc"></div></div>
 
-<div class="ov" id="to"><div class="card">
-  <h2>老師教材區</h2>
-  <p style="font-size:15px;line-height:1.6"><b>GitHub Pages：</b>載入後下載 <code>lesson.md</code> 放到網站根目錄並推送，全班才看得到。多教材請放 <code>lessons.json</code> 清單與多個 md／json 檔。</p>
-  <p style="font-size:14px;margin:10px 0 4px;font-weight:900">切換教材（全班連結可加 <code>?lesson=檔名</code>）</p>
-  <div class="row" style="align-items:center;margin-bottom:8px">
-    <select id="lessonSelect" style="flex:1;font:inherit;font-weight:700;padding:8px 12px;border-radius:12px;border:2px solid var(--line);background:transparent;color:var(--ink)">
-      <option value="">預設 lesson.md / lesson.json</option>
-    </select>
-    <button class="btn alt" id="lessonGo" type="button">切換</button>
-  </div>
-  <p style="font-size:14px;margin:10px 0 4px;font-weight:900">① 複製提示詞 → 到 Grok / Gemini 轉教材</p>
-  <div class="ai-box" id="teacherPromptBox">
-    <div class="ai-title"><span>提示詞</span><button type="button" class="btn copy" id="copyPrompt">複製提示詞</button></div>
-    <p class="ai-text" id="teacherPromptText" style="white-space:pre-wrap;font-size:12px;max-height:120px;overflow:auto"></p>
-  </div>
-  <p style="font-size:14px;margin:10px 0 4px;font-weight:900">② 貼上 Markdown（或上傳 .md）並載入</p>
-  <input type="file" id="mdfile" accept=".md,text/markdown,text/plain" aria-label="上傳 Markdown 檔">
-  <textarea id="txt" placeholder="在此貼上 Markdown…" aria-label="教材 Markdown" style="margin-top:8px;min-height:140px"></textarea>
-  <div class="row">
-    <button class="btn" id="loadMd">載入成島嶼</button>
-    <button class="btn alt" id="dlMd">下載 lesson.md</button>
-    <button class="btn alt" id="dlJson">下載 lesson.json</button>
-  </div>
-  <div class="row">
-    <button class="btn alt" id="demo">載入範例</button>
-    <button class="btn alt" id="rst">重設星星</button>
-    <button class="btn alt" id="exportStars">匯出本機進度 CSV</button>
-    <button class="btn alt" id="tc">關閉</button>
-    <button class="btn alt" id="gen">舊版本頁 AI</button>
-  </div>
-  <div class="msg" id="tm" role="status"></div>
-</div></div>
-
 <div class="ov" id="wo"><div class="card" style="text-align:center">
   <div class="big">🎉🏆🎉</div>
   <h2>太棒了！全部島嶼都完成了！</h2>
@@ -231,7 +197,7 @@ textarea{height:110px;resize:vertical}
 </div></div>
 
 <div class="ov on" id="login"><div class="card">
-  <h2>知識島探險</h2>
+  <h2>知識島探險家</h2>
   <p style="font-size:15px;margin:4px 0 0">輸入暱稱，和其他探險家一起上線吧！</p>
   <input type="text" id="nick" maxlength="12" placeholder="你的暱稱" autocomplete="nickname" aria-label="暱稱">
   <div class="msg" id="lm" role="status"></div>
@@ -360,10 +326,17 @@ function getAiAsk(q,ch){
   return defaultAiAsk(topic||ch&&ch.title||'這單元');
 }
 function aiBoxHtml(prompt,id){
+  const q=encodeURIComponent(prompt||'');
+  const gemini='https://gemini.google.com/app';
+  const chatgpt='https://chatgpt.com/?q='+q;
   return `<div class="ai-box" id="${id||''}">
     <div class="ai-title"><span>🤖 複製去問 AI</span><button type="button" class="btn copy" data-copy>複製問句</button></div>
     <p class="ai-text">${esc(prompt)}</p>
-    <p class="ai-tip">貼到 Gemini 等 AI → 看懂後再自己作答（不要問「答案是哪個」）</p>
+    <p class="ai-tip">先複製問句 → 開 AI 貼上 → 看懂後再自己作答（不要問「答案是哪個」）</p>
+    <div class="ai-links">
+      <a class="ai-link" href="${gemini}" target="_blank" rel="noopener">打開 Gemini</a>
+      <a class="ai-link" href="${chatgpt}" target="_blank" rel="noopener">打開 ChatGPT</a>
+    </div>
   </div>`;
 }
 function bindCopy(root){
@@ -393,14 +366,23 @@ const TOD={
  day:{bg:0x8ec8e8,hs:0xffffff,hg:0x7ab0c4,hi:1.0,sc:0xffffff,si:.85,sp:[8,14,6],cD:0x1e7aab,cL:0x5eb8d8},
  dusk:{bg:0xdcaa94,hs:0xffcfa8,hg:0x6d7090,hi:.85,sc:0xff9a5a,si:.8,sp:[-12,5,-6],cD:0x3a5a7a,cL:0xc89880},
  night:{bg:0x15203a,hs:0x6d80c0,hg:0x152038,hi:.6,sc:0x8aa4ff,si:.35,sp:[6,12,-8],cD:0x0e1c32,cL:0x1e3a58}};
-let todKey='dawn';try{const k=localStorage.getItem('isl_tod');if(TOD[k])todKey=k}catch(e){}
-const T0=TOD[todKey];
+const T0=TOD.dawn;
 const cur_={bg:C(T0.bg),hs:C(T0.hs),hg:C(T0.hg),hi:T0.hi,sc:C(T0.sc),si:T0.si,sp:new THREE.Vector3(...T0.sp),cD:C(T0.cD),cL:C(T0.cL)};
 const tg={bg:C(T0.bg),hs:C(T0.hs),hg:C(T0.hg),hi:T0.hi,sc:C(T0.sc),si:T0.si,sp:new THREE.Vector3(...T0.sp),cD:C(T0.cD),cL:C(T0.cL)};
-function setTod(k){todKey=k;const p=TOD[k];tg.bg.set(p.bg);tg.hs.set(p.hs);tg.hg.set(p.hg);tg.hi=p.hi;tg.sc.set(p.sc);tg.si=p.si;tg.sp.set(...p.sp);tg.cD.set(p.cD);tg.cL.set(p.cL);
-  document.querySelectorAll('#tod button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===k));try{localStorage.setItem('isl_tod',k)}catch(e){}}
-document.querySelectorAll('#tod button').forEach(b=>b.onclick=()=>setTod(b.dataset.t));
-document.querySelectorAll('#tod button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.t===todKey));
+/* 遊戲時間：1 遊戲小時 = HOUR_SEC 真實秒，一天約 4 分鐘 */
+const HOUR_SEC=10;let gameH=7;
+const KF=[[0,'night'],[4.5,'night'],[6.5,'dawn'],[9,'day'],[16,'day'],[18,'dusk'],[20,'night'],[24,'night']];
+const _tc=new THREE.Color(),_tv=new THREE.Vector3();
+function todTarget(h,o){let i=0;while(i<KF.length-2&&h>=KF[i+1][0])i++;const a=KF[i],b=KF[i+1];let u=Math.min(1,Math.max(0,(h-a[0])/(b[0]-a[0])));u=u*u*(3-2*u);const A=TOD[a[1]],B=TOD[b[1]];
+  ['bg','hs','hg','sc','cD','cL'].forEach(p=>o[p].set(A[p]).lerp(_tc.set(B[p]),u));o.hi=A.hi+(B.hi-A.hi)*u;o.si=A.si+(B.si-A.si)*u;o.sp.set(...A.sp).lerp(_tv.set(...B.sp),u)}
+todTarget(gameH,cur_);todTarget(gameH,tg);
+const schoolHands=[];let lastClk='';
+function todTick(dt){gameH=(gameH+dt/HOUR_SEC)%24;todTarget(gameH,tg);NK=nightK(gameH);
+  winMat.color.setHex(0x6b7a86).lerp(_tc.set(0xffd27a),NK);lampMat.color.setHex(0x8a8a8a).lerp(_tc.set(0xffe29a),NK);glowMat.opacity=NK*.9;
+  const H=Math.floor(gameH),M=Math.floor((gameH-H)*6)*10,h=gameH;
+  const per=h>=5&&h<8?['清晨','🌅']:h>=8&&h<17?['白天','☀️']:h>=17&&h<19?['黃昏','🌇']:['夜晚','🌙'];
+  const key=per[0]+H+M;if(key!==lastClk){lastClk=key;$('#clkP').textContent=per[0];$('#clkI').textContent=per[1];$('#clkT').textContent=String(H).padStart(2,'0')+':'+String(M).padStart(2,'0')}
+  schoolHands.forEach(s=>{s.h.rotation.z=-(h%12)/12*Math.PI*2;s.m.rotation.z=-(h%1)*Math.PI*2})}
 
 /* ---------- 3D ---------- */
 const cv=$('#c'),R=new THREE.WebGLRenderer({canvas:cv,antialias:true}),LB=$('#lb');
@@ -417,6 +399,15 @@ function easeTod(){const f=.05;S.background.lerp(tg.bg,f);S.fog.color.copy(S.bac
   sun.color.lerp(tg.sc,f);sun.intensity+=(tg.si-sun.intensity)*f;sun.position.lerp(tg.sp,f);cD.lerp(tg.cD,f);cL.lerp(tg.cL,f);
   document.body.style.background='#'+S.background.getHexString()}
 const mat=c=>new THREE.MeshLambertMaterial({color:c});
+/* ---------- 夜間燈光 ---------- */
+const winMat=new THREE.MeshBasicMaterial({color:0x6b7a86,side:THREE.DoubleSide}),lampMat=new THREE.MeshBasicMaterial({color:0x8a8a8a}),winGeo=new THREE.PlaneGeometry(1,1);
+const glowTex=tex((x,w,h)=>{const g=x.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);g.addColorStop(0,'rgba(255,214,140,1)');g.addColorStop(.35,'rgba(255,190,100,.45)');g.addColorStop(1,'rgba(255,170,80,0)');x.fillStyle=g;x.fillRect(0,0,w,h)},128,128);
+const glowMat=new THREE.SpriteMaterial({map:glowTex,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false});
+function glow(x,y,z,s){const p=new THREE.Sprite(glowMat);p.position.set(x,y,z);p.scale.set(s,s,1);return p}
+function win(g,x,y,z,ry,w,h){const m=new THREE.Mesh(winGeo,winMat);m.position.set(x,y,z);m.rotation.y=ry||0;m.scale.set(w||.15,h||.18,1);g.add(m)}
+function lamp(x,z){const g=new THREE.Group();g.add(mk(new THREE.CylinderGeometry(.018,.025,.55,6),0x4a4a52,0,.275,0));const b=new THREE.Mesh(new THREE.SphereGeometry(.07,8,6),lampMat);b.position.y=.6;g.add(b,glow(0,.6,0,.9));g.position.set(x,0,z);return g}
+let NK=0;
+function nightK(h){return h<5?1:h<6.5?1-(h-5)/1.5:h<17?0:h<19?(h-17)/2:1}
 function mk(geo,c,x,y,z){const m=new THREE.Mesh(geo,mat(c));m.position.set(x,y,z);return m}
 function blob(r,h,col,seed){const g=new THREE.CylinderGeometry(r,r*1.06,h,36),p=g.attributes.position;
   for(let k=0;k<p.count;k++){const x=p.getX(k),z=p.getZ(k),a=Math.atan2(z,x),f=1+.12*Math.sin(a*3+seed)+.07*Math.sin(a*5+seed*2);p.setX(k,x*f);p.setZ(k,z*f)}
@@ -424,9 +415,9 @@ function blob(r,h,col,seed){const g=new THREE.CylinderGeometry(r,r*1.06,h,36),p=
 function tree(x,z,round,col){const g=new THREE.Group();g.add(mk(new THREE.CylinderGeometry(.06,.08,.35,6),0x8a6a4b,0,.17,0));
   if(round)g.add(mk(new THREE.SphereGeometry(.4,10,8),col,0,.62,0));else{g.add(mk(new THREE.ConeGeometry(.36,.8,8),0x7f9f6c,0,.65,0));g.add(mk(new THREE.ConeGeometry(.26,.6,8),0x7f9f6c,0,1,0))}
   g.position.set(x,0,z);return g}
-function house(roof){const g=new THREE.Group();g.add(mk(new THREE.BoxGeometry(.9,.6,.7),0xf4efe4,0,.3,0));const r=mk(new THREE.ConeGeometry(.75,.5,4),roof,0,.85,0);r.rotation.y=Math.PI/4;r.scale.z=.8;g.add(r);return g}
-function house2(roof){const g=new THREE.Group();g.add(mk(new THREE.BoxGeometry(.7,.5,.85),0xeee6d8,0,.25,0));const r=mk(new THREE.ConeGeometry(.6,.42,4),roof,0,.72,0);r.rotation.y=Math.PI/4;g.add(r);g.add(mk(new THREE.BoxGeometry(.18,.18,.05),0x5a4030,0,.28,.43));return g}
-function tower(){const g=new THREE.Group();g.add(mk(new THREE.CylinderGeometry(.22,.28,1.4,8),0xe8dfd0,0,.7,0));g.add(mk(new THREE.CylinderGeometry(.32,.32,.12,8),0xc6574a,0,1.45,0));g.add(mk(new THREE.ConeGeometry(.18,.3,8),0xc6574a,0,1.7,0));return g}
+function house(roof){const g=new THREE.Group();g.add(mk(new THREE.BoxGeometry(.9,.6,.7),0xf4efe4,0,.3,0));const r=mk(new THREE.ConeGeometry(.75,.5,4),roof,0,.85,0);r.rotation.y=Math.PI/4;r.scale.z=.8;g.add(r);win(g,-.24,.32,.356);win(g,.24,.32,.356);win(g,0,.32,-.356,Math.PI);win(g,.456,.32,0,Math.PI/2,.18,.18);g.add(glow(0,.35,.55,1.1));return g}
+function house2(roof){const g=new THREE.Group();g.add(mk(new THREE.BoxGeometry(.7,.5,.85),0xeee6d8,0,.25,0));const r=mk(new THREE.ConeGeometry(.6,.42,4),roof,0,.72,0);r.rotation.y=Math.PI/4;g.add(r);g.add(mk(new THREE.BoxGeometry(.18,.18,.05),0x5a4030,0,.28,.43));win(g,-.25,.3,.431);win(g,.25,.3,.431);win(g,.356,.28,0,Math.PI/2,.2,.16);g.add(glow(0,.33,.6,1));return g}
+function tower(){const g=new THREE.Group();g.add(mk(new THREE.CylinderGeometry(.22,.28,1.4,8),0xe8dfd0,0,.7,0));g.add(mk(new THREE.CylinderGeometry(.32,.32,.12,8),0xc6574a,0,1.45,0));g.add(mk(new THREE.ConeGeometry(.18,.3,8),0xc6574a,0,1.7,0));const lb=new THREE.Mesh(new THREE.SphereGeometry(.07,8,6),lampMat);lb.position.set(0,1.0,.22);g.add(lb,glow(0,1.0,.24,.9));return g}
 function stall(){const g=new THREE.Group();g.add(mk(new THREE.BoxGeometry(.55,.08,.4),0x8a6a4b,0,.35,0));g.add(mk(new THREE.CylinderGeometry(.03,.03,.7,5),0x8a6a4b,-.22,.0,0));g.add(mk(new THREE.CylinderGeometry(.03,.03,.7,5),0x8a6a4b,.22,.0,0));g.add(mk(new THREE.BoxGeometry(.6,.35,.02),0xe8a030,0,.55,0));return g}
 function dock(){const g=new THREE.Group();g.add(mk(new THREE.BoxGeometry(1.2,.08,.4),0xa08050,0,.04,0));[-.4,0,.4].forEach(x=>g.add(mk(new THREE.CylinderGeometry(.04,.05,.25,5),0x6b5340,x,-.1,0)));return g}
 function suspensionBridge(len){
@@ -459,7 +450,7 @@ function suspensionBridge(len){
   }
   return g;
 }
-function lighthouse(){const g=new THREE.Group();[0xf4efe4,0xd9573f,0xf4efe4,0xd9573f].forEach((c,k)=>g.add(mk(new THREE.CylinderGeometry(.3-k*.04,.34-k*.04,.45,12),c,0,.22+k*.45,0)));g.add(mk(new THREE.ConeGeometry(.3,.35,12),0xd9573f,0,2.05,0));return g}
+function lighthouse(){const g=new THREE.Group();[0xf4efe4,0xd9573f,0xf4efe4,0xd9573f].forEach((c,k)=>g.add(mk(new THREE.CylinderGeometry(.3-k*.04,.34-k*.04,.45,12),c,0,.22+k*.45,0)));g.add(mk(new THREE.ConeGeometry(.3,.35,12),0xd9573f,0,2.05,0));const lb=new THREE.Mesh(new THREE.SphereGeometry(.15,10,8),lampMat);lb.position.y=1.86;g.add(lb,glow(0,1.88,0,2.2));return g}
 function person(c,hr){const g=new THREE.Group(),lim=(x,y,l,col,r)=>{const p=new THREE.Group();p.position.set(x,y,0);p.add(mk(new THREE.CylinderGeometry(r,r*.85,l,6),col,0,-l/2,0));g.add(p);return p};
   g.add(mk(new THREE.CylinderGeometry(.065,.08,.2,8),c,0,.3,0),mk(new THREE.SphereGeometry(.06,10,8),0xf2c9a0,0,.47,0),mk(new THREE.SphereGeometry(.066,10,8,0,6.29,0,1.7),hr,0,.485,0));
   g.userData={L:lim(-.035,.2,.2,0x4a5568,.035),Rg:lim(.035,.2,.2,0x4a5568,.035),A1:lim(-.1,.39,.17,c,.025),A2:lim(.1,.39,.17,c,.025)};return g}
@@ -491,21 +482,25 @@ function boat(){
 function buoy(){const g=new THREE.Group();g.add(mk(new THREE.CylinderGeometry(.14,.18,.3,10),0xe8c23a,0,.05,0),mk(new THREE.SphereGeometry(.1,8,6),0xd9573f,0,.28,0));return g}
 function dolphin(){
   const g=new THREE.Group();
-  const skin=new THREE.MeshLambertMaterial({color:0x5b7d94});
-  const pale=new THREE.MeshLambertMaterial({color:0xd2dde6});
-  const body=new THREE.Mesh(new THREE.SphereGeometry(.32,12,10),skin);body.scale.set(2.1,.72,.68);g.add(body);
-  const mid=new THREE.Mesh(new THREE.SphereGeometry(.28,10,8),skin);mid.scale.set(1.4,.6,.58);mid.position.x=-.35;g.add(mid);
-  const bel=new THREE.Mesh(new THREE.SphereGeometry(.26,10,8),pale);bel.scale.set(1.7,.38,.52);bel.position.set(.05,-.1,0);g.add(bel);
-  const head=new THREE.Mesh(new THREE.SphereGeometry(.18,10,8),skin);head.scale.set(1.5,.85,.85);head.position.set(.55,.02,0);g.add(head);
-  const nose=new THREE.Mesh(new THREE.SphereGeometry(.09,8,6),skin);nose.scale.set(1.6,.7,.7);nose.position.set(.78,0,0);g.add(nose);
-  [-1,1].forEach(s=>{const e=new THREE.Mesh(new THREE.SphereGeometry(.035,6,6),new THREE.MeshLambertMaterial({color:0x1a1a1a}));e.position.set(.58,.08,s*.16);g.add(e)});
-  const dfin=new THREE.Mesh(new THREE.ConeGeometry(.1,.38,6),skin);dfin.position.set(-.05,.32,0);dfin.rotation.z=Math.PI;dfin.scale.set(.45,1,.12);g.add(dfin);
-  const ped=new THREE.Mesh(new THREE.SphereGeometry(.14,8,6),skin);ped.scale.set(1.2,.45,.4);ped.position.set(-.7,0,0);g.add(ped);
-  const fluke=new THREE.Group();
-  [-1,1].forEach(s=>{const f=new THREE.Mesh(new THREE.SphereGeometry(.16,8,6),skin);f.scale.set(.25,.12,1.15);f.position.set(0,0,s*.14);f.rotation.x=s*.35;fluke.add(f)});
-  fluke.position.set(-.9,0,0);g.add(fluke);
-  [-1,1].forEach(s=>{const pf=new THREE.Mesh(new THREE.SphereGeometry(.14,8,6),skin);pf.scale.set(1.3,.18,.55);pf.position.set(.15,-.12,s*.28);pf.rotation.x=s*.55;pf.rotation.y=s*.2;g.add(pf)});
-  g.scale.setScalar(1.05);return g}
+  const prof=[[.0,-.88],[.05,-.78],[.1,-.62],[.17,-.4],[.25,-.15],[.31,.1],[.3,.32],[.24,.52],[.17,.66],[.1,.76],[.065,.84],[.045,.93],[.0,.99]].map(p=>new THREE.Vector2(p[0],p[1]));
+  const bg=new THREE.LatheGeometry(prof,22);bg.rotateZ(-Math.PI/2);bg.scale(1,.92,.88);
+  const P=bg.attributes.position,col=new Float32Array(P.count*3),back=new THREE.Color(0x46606f),flank=new THREE.Color(0x7d97a8),belly=new THREE.Color(0xe4ecf1),cc=new THREE.Color();
+  for(let k=0;k<P.count;k++){const y=P.getY(k),z=P.getZ(k),r=Math.hypot(y,z)||1,n=y/r;
+    if(n>.35)cc.copy(back);else if(n>-.25)cc.copy(flank).lerp(back,(n+.25)/.6*.7);else cc.copy(flank).lerp(belly,Math.min(1,(-.25-n)/.35));
+    col[k*3]=cc.r;col[k*3+1]=cc.g;col[k*3+2]=cc.b}
+  bg.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const skin=new THREE.MeshLambertMaterial({color:0x56707f}),vm=new THREE.MeshLambertMaterial({vertexColors:true});
+  g.add(new THREE.Mesh(bg,vm));
+  const ext=(s,d)=>{const e=new THREE.ExtrudeGeometry(s,{depth:d,bevelEnabled:false});e.translate(0,0,-d/2);return e};
+  const ds=new THREE.Shape();ds.moveTo(.2,0);ds.quadraticCurveTo(.1,.22,-.3,.38);ds.quadraticCurveTo(-.12,.15,-.24,0);ds.lineTo(.2,0);
+  const df=new THREE.Mesh(ext(ds,.035),skin);df.position.set(.02,.24,0);g.add(df);
+  const fs=new THREE.Shape();fs.moveTo(.1,0);fs.quadraticCurveTo(-.02,-.14,-.24,-.32);fs.quadraticCurveTo(-.06,-.2,-.1,0);fs.lineTo(.1,0);
+  [-1,1].forEach(s=>{const f=new THREE.Mesh(ext(fs,.022),skin);f.position.set(.38,-.12,s*.2);f.rotation.x=-s*1.0;g.add(f)});
+  const tail=new THREE.Group();tail.position.set(-.86,0,0);
+  const ts=new THREE.Shape();ts.moveTo(0,-.05);ts.lineTo(0,.05);ts.quadraticCurveTo(-.06,.2,-.2,.4);ts.quadraticCurveTo(-.2,.18,-.1,.03);ts.lineTo(-.1,-.03);ts.quadraticCurveTo(-.2,-.18,-.2,-.4);ts.quadraticCurveTo(-.06,-.2,0,-.05);
+  const tg2=ext(ts,.025);tg2.rotateX(Math.PI/2);tail.add(new THREE.Mesh(tg2,skin));g.add(tail);
+  [-1,1].forEach(s=>{const e=new THREE.Mesh(new THREE.SphereGeometry(.028,8,6),new THREE.MeshBasicMaterial({color:0x111111}));e.position.set(.6,.06,s*.15);g.add(e)});
+  g.userData.fluke=tail;g.rotation.order='YXZ';return g}
 function mkSplash(){
   const g=new THREE.Group();
   for(let i=0;i<20;i++){
@@ -520,13 +515,15 @@ wg.setAttribute('position',new THREE.BufferAttribute(new Float32Array([0,0,.15,0
 for(let k=0;k<9;k++){const g=new THREE.Group(),L=new THREE.Mesh(wg,wm),Rw=new THREE.Mesh(wg,wm);Rw.scale.x=-1;g.add(L,Rw);g.scale.setScalar(1.4);S.add(g);
   birds.push({g,L,Rw,rad:7+Math.random()*12,h:5+Math.random()*4,sp:(.12+Math.random()*.2)*(k%2?1:-1),ph:Math.random()*6.28})}
 /* 海豚：隨機躍出海面 + 水花 */
-const dolphins=[],splashes=[];
+const dolphins=[],splashes=[],ripples=[];
 function spawnSplash(x,z,power){
   let sp=splashes.find(s=>!s.active);
   if(!sp){
     const g=mkSplash();S.add(g);
     sp={g,active:false,t:0,parts:[]};splashes.push(sp);
   }
+  let rp=ripples.find(r=>!r.on);if(!rp){const m=new THREE.Mesh(new THREE.RingGeometry(.25,.34,28),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.6,side:THREE.DoubleSide,depthWrite:false}));m.rotation.x=-Math.PI/2;S.add(m);rp={m,on:false,t:0};ripples.push(rp)}
+  rp.on=true;rp.t=0;rp.m.visible=true;rp.m.position.set(x,-.08,z);
   sp.active=true;sp.t=0;sp.g.visible=true;sp.g.position.set(x,0,z);
   sp.parts=sp.g.children.map(p=>{
     const a=Math.random()*Math.PI*2,spd=.8+Math.random()*1.8*power;
@@ -537,11 +534,10 @@ function spawnSplash(x,z,power){
 }
 for(let k=0;k<4;k++){
   const d=dolphin();d.visible=false;S.add(d);
-  dolphins.push({
-    g:d,wait:1.5+Math.random()*5,t:0,dur:1.5,
-    ang:Math.random()*Math.PI*2,rad:12,dir:1,active:false,splashedIn:false,splashedOut:false
-  });
+  dolphins.push({g:d,fl:d.userData.fluke,wait:k%2?1e9:2+Math.random()*5+k,t:0,dur:1.8,ang:0,rad:14,dir:1,H:3,T:4.5,sc:k%2?.72:1,active:false,sIn:false,sOut:false,buddy:null,par:null,lead:k%2==0});
 }
+dolphins[0].buddy=dolphins[1];dolphins[2].buddy=dolphins[3];
+function launchDolphin(d,a,r,dr){d.active=true;d.t=0;d.ang=a;d.rad=r;d.dir=dr;d.dur=1.7+Math.random()*.4;d.H=2.6+Math.random()*.9;d.T=4+Math.random()*1.5;d.sIn=d.sOut=false;d.g.scale.setScalar(d.sc*1.25);d.g.visible=true}
 /* 遠方海岸：沙灘、山丘、樹林、小屋 */
 (function(){
   const A0=Math.PI-1.9,AN=3.8,NA=110,NR=12,pos=[],col=[],idx=[],tmp=new THREE.Color();
@@ -567,6 +563,26 @@ for(let k=0;k<4;k++){
 const G=new THREE.Group();S.add(G);
 let th=0.4,ph=1.0,dist=24,items=[],hit=[],floaters=[],guide=null,isl=[],auto=true,ftheta=null,tph=null,topView=false;
 let hubG=null;
+function school(){
+  const g=new THREE.Group(),cream=0xf3e9d2,red=0xc6574a;
+  g.add(mk(new THREE.BoxGeometry(1.1,.95,.9),cream,0,.475,0));
+  [-1,1].forEach(s=>{g.add(mk(new THREE.BoxGeometry(.95,.6,.75),cream,s*1.0,.3,0));g.add(mk(new THREE.BoxGeometry(1.05,.07,.85),red,s*1.0,.635,0))});
+  g.add(mk(new THREE.BoxGeometry(1.2,.07,1.0),red,0,.985,0));
+  g.add(mk(new THREE.BoxGeometry(.5,.55,.5),cream,0,1.3,0));
+  const rf=mk(new THREE.ConeGeometry(.42,.4,4),red,0,1.78,0);rf.rotation.y=Math.PI/4;g.add(rf);
+  g.add(mk(new THREE.BoxGeometry(.28,.4,.04),0x5a4030,0,.2,.46),mk(new THREE.BoxGeometry(.55,.06,.22),0xd8d0c0,0,.03,.56));
+  const pl=new THREE.Mesh(new THREE.PlaneGeometry(.6,.15),new THREE.MeshBasicMaterial({map:tex((x,w,h)=>{x.fillStyle='#2f5f8a';x.fillRect(0,0,w,h);x.fillStyle='#fff';x.font='bold 44px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText('學　校',w/2,h/2+2)},256,64)}));pl.position.set(0,.76,.452);g.add(pl);
+  for(const sg of[1,-1]){const ry=sg>0?0:Math.PI;
+    [-.36,.36].forEach(x=>win(g,x*sg,.5,.452*sg,ry,.17,.22));
+    [-1.25,-.75,.75,1.25].forEach(x=>win(g,x*sg,.32,.377*sg,ry,.17,.22));
+    const fg=new THREE.Group();fg.position.set(0,1.3,.256*sg);fg.rotation.y=ry;
+    fg.add(new THREE.Mesh(new THREE.CircleGeometry(.19,24),new THREE.MeshBasicMaterial({map:tex((x,w,h)=>{x.fillStyle='#fffdf5';x.beginPath();x.arc(w/2,h/2,w/2-3,0,7);x.fill();x.lineWidth=6;x.strokeStyle='#5a4030';x.stroke();x.fillStyle='#5a4030';for(let k=0;k<12;k++){const a=k*Math.PI/6;x.fillRect(w/2+Math.sin(a)*(w/2-14)-2,h/2-Math.cos(a)*(h/2-14)-2,4,4)}},128,128)})));
+    const hh=new THREE.Group(),mh=new THREE.Group();hh.position.z=mh.position.z=.004;
+    const hb=new THREE.Mesh(new THREE.PlaneGeometry(.022,.1),new THREE.MeshBasicMaterial({color:0x2b2521}));hb.position.y=.05;hh.add(hb);
+    const mb=new THREE.Mesh(new THREE.PlaneGeometry(.016,.15),new THREE.MeshBasicMaterial({color:0x2b2521}));mb.position.y=.075;mh.add(mb);
+    fg.add(hh,mh);g.add(fg);schoolHands.push({h:hh,m:mh})}
+  [[-1,.5],[1,.5]].forEach(p=>g.add(glow(p[0],.4,p[1]+.1,1.7)));g.add(glow(0,.55,.7,1.9),glow(-1,.4,-.5,1.7),glow(1,.4,-.5,1.7),glow(0,.55,-.7,1.9));
+  return g}
 function build(){
   while(G.children.length)G.remove(G.children[0]);LB.innerHTML='';items=[];hit=[];floaters=[];isl=[];hubG=null;
   const n=lesson.chapters.length;
@@ -579,12 +595,13 @@ function build(){
     const b1=blob(2.8,.5,0xd9bb82,9);b1.position.y=-.15;const b2=blob(2.65,.28,0xe9d3a3,9);b2.position.y=.2;
     const gr=blob(2.15,.24,0xb7c78e,9);gr.position.y=.48;g.add(b1,b2,gr);
     const top=new THREE.Group();top.position.y=.58;g.add(top);
-    for(let k=0;k<7;k++){const q=k*2.3+1,d=0.95+(k%3)*.18;top.add(tree(Math.sin(q)*d,Math.cos(q)*d,k%2==0,[0xa3ad7a,0x8fae6a,0xe8a9b6][k%3]))}
-    const h1=house(0xc6574a);h1.position.set(.35,0,-.25);h1.scale.setScalar(.95);top.add(h1);
-    const h2=house2(0x6f8aa3);h2.position.set(-.75,0,.35);h2.scale.setScalar(.8);top.add(h2);
-    const tw=tower();tw.position.set(.15,0,.85);tw.scale.setScalar(.7);top.add(tw);
-    top.add(mk(new THREE.CylinderGeometry(.035,.045,1.8,6),0x8a6a4b,0,.9,0));
-    top.add(mk(new THREE.BoxGeometry(.42,.24,.035),0xd9573f,0.24,1.65,0));
+    schoolHands.length=0;
+    const sc=school();sc.position.set(0,0,-.5);sc.scale.setScalar(.8);top.add(sc);
+    [[-1.7,.3],[1.7,.3],[-1.4,1.0],[1.4,1.0],[-1.1,-1.35],[.1,-1.7],[1.2,-1.25]].forEach((p,k)=>top.add(tree(p[0],p[1],k%2==0,[0xa3ad7a,0x8fae6a,0xe8a9b6][k%3])));
+    top.add(mk(new THREE.BoxGeometry(.5,.02,1.3),0xe6dcc6,0,.015,.6));
+    top.add(lamp(-.42,.5),lamp(.42,.5),lamp(-.42,1.25),lamp(.42,1.25));
+    top.add(mk(new THREE.CylinderGeometry(.03,.04,1.6,6),0x8a6a4b,1.0,.8,.8));
+    top.add(mk(new THREE.BoxGeometry(.42,.24,.03),0xd9573f,1.22,1.45,.8));
     const el=document.createElement('button');el.className='pl';el.type='button';
     el.innerHTML='<b>主</b><span>主島大廳</span><u></u>';el.onclick=()=>{if(typeof openRoomMenu==='function')openRoomMenu();else if(typeof mpVisit==='function')mpVisit(-1)};
     LB.appendChild(el);
@@ -605,7 +622,7 @@ function build(){
     if(i%3===0){const l=lighthouse();l.position.set(-.5,0,1.1);l.scale.setScalar(.85);top.add(l)}
     else if(i%3===1){const tw=tower();tw.position.set(-.2,0,1.0);tw.scale.setScalar(.7);top.add(tw)}
     else{const stl=stall();stl.position.set(.1,0,1.15);stl.rotation.y=.3;top.add(stl)}
-    const dk=dock();dk.position.set(1.6,0,-.8);dk.rotation.y=-.5;top.add(dk);
+    const dk=dock();dk.position.set(1.6,0,-.8);dk.rotation.y=-.5;top.add(dk);top.add(lamp(1.15,.3),lamp(-.35,-.95));
     const ppl=[[0xd9573f,0x3b2a20],[0x4a8fb5,0x1c1c1c],[0xe0a63a,0x8a5a2b]].map((c,k)=>{const p=person(c[0],c[1]);top.add(p);return{g:p,rad:1.7+k*.12,sp:(.22+k*.07)*(k==1?-1:1),ph:k*2.1+i}});
     const st=starSpr();st.position.y=4.3;st.visible=!!stars[i];g.add(st);
     g.traverse(m=>{if(m.isMesh){m.userData.i=i;hit.push(m)}});
@@ -655,7 +672,8 @@ cv.addEventListener('wheel',e=>{e.preventDefault();hideHint();dist=Math.min(50,M
 const rc=new THREE.Raycaster(),V=new THREE.Vector3();
 function pick(e){rc.setFromCamera({x:e.clientX/innerWidth*2-1,y:-(e.clientY/innerHeight)*2+1},cam);const h=rc.intersectObjects(hit)[0];if(h)openIsland(h.object.userData.i)}
 const wrapPi=a=>Math.atan2(Math.sin(a),Math.cos(a));
-function loop(t){t*=.001;easeTod();waves(t);
+let lastT=null;
+function loop(t){t*=.001;const dt=lastT==null?0:Math.min(.1,t-lastT);lastT=t;todTick(dt);easeTod();waves(t);
   items.forEach(o=>{o.g.position.y=Math.sin(t*1.1+o.i)*.06;
     o.foam.forEach((m,k)=>{const q=t*1.4+k*3+o.i,s=1+.05*Math.sin(q);m.scale.set(s,1,s);m.material.opacity=.45+.25*Math.sin(q+1)});
     o.ppl.forEach(p=>{const f=u=>{const a=p.ph+u*p.sp+.3*Math.sin(u*.4+p.ph),r=p.rad+.15*Math.sin(u*.6+p.ph);return[Math.cos(a)*r,Math.sin(a)*r]},c=f(t),n=f(t+.1),w=t*6+p.ph,U=p.g.userData,sw=Math.sin(w);
@@ -679,39 +697,23 @@ function loop(t){t*=.001;easeTod();waves(t);
     }
   });
   birds.forEach(b=>{const a=b.ph+t*b.sp,s=Math.sign(b.sp),f=Math.sin(t*7+b.ph)*.5;b.g.position.set(Math.cos(a)*b.rad,b.h+Math.sin(t*.7+b.ph)*.4,Math.sin(a)*b.rad);b.g.rotation.y=Math.atan2(-Math.sin(a)*s,Math.cos(a)*s);b.L.rotation.z=f;b.Rw.rotation.z=-f});
-  // 海豚跳躍 + 水花
+  // 海豚：成對躍出，依拋物線切線俯仰，尾鰭擺動
   dolphins.forEach(d=>{
-    if(!d.active){
-      d.wait-=1/60;
+    if(!d.active){d.wait-=1/60;
       if(d.wait<=0){
-        d.active=true;d.t=0;d.ang=Math.random()*Math.PI*2;
-        d.rad=13+Math.random()*11;d.dir=(Math.random()<.5?1:-1)*(0.9+Math.random()*.5);
-        d.dur=1.5+Math.random()*.4;d.g.visible=true;
-        d.splashedIn=false;d.splashedOut=false;
-      }
-      return;
-    }
-    d.t+=1/60;
-    const u=Math.min(1,d.t/d.dur);
-    const arc=Math.sin(u*Math.PI);
-    const height=arc*3.4;
-    const travel=u*3.4*d.dir;
-    const ang=d.ang+travel/Math.max(d.rad,1);
-    const ang2=d.ang+(travel+0.12*d.dir)/Math.max(d.rad,1);
-    const x=Math.sin(ang)*d.rad,z=Math.cos(ang)*d.rad;
-    const x2=Math.sin(ang2)*d.rad,z2=Math.cos(ang2)*d.rad;
-    d.g.position.set(x,height-0.15,z);
-    d.g.rotation.order='YXZ';
-    const vx=x2-x,vz=z2-z;
-    d.g.rotation.y=Math.atan2(-vz,vx);
-    d.g.rotation.x=-(Math.cos(u*Math.PI))*1.1;
-    d.g.rotation.z=0;
-    // 出水水花
-    if(!d.splashedOut&&u>0.04&&height>0.3){d.splashedOut=true;spawnSplash(x,z,1.1)}
-    // 入水水花
-    if(!d.splashedIn&&u>0.88&&height<0.5){d.splashedIn=true;spawnSplash(x,z,1.4)}
-    if(u>=1){d.active=false;d.g.visible=false;d.wait=2+Math.random()*6}
+        if(d.lead){const a=Math.random()*6.283,r=13+Math.random()*11,dr=Math.random()<.5?1:-1;launchDolphin(d,a,r,dr);if(d.buddy){d.buddy.wait=.3;d.buddy.par={a:a+dr*.03,r:r+1.1,dr}}}
+        else if(d.par){launchDolphin(d,d.par.a,d.par.r,d.par.dr);d.par=null}else d.wait=1e9}
+      return}
+    d.t+=1/60;const u=Math.min(1,d.t/d.dur),arc=Math.sin(u*Math.PI),dr=d.dir;
+    const ang=d.ang+u*d.T*dr/d.rad,x=Math.sin(ang)*d.rad,z=Math.cos(ang)*d.rad,y=arc*d.H-.7;
+    d.g.position.set(x,y,z);
+    d.g.rotation.set(Math.sin(d.t*9)*.04,Math.atan2(Math.sin(ang)*dr,Math.cos(ang)*dr),Math.atan2(d.H*Math.PI*Math.cos(u*Math.PI),d.T),'YXZ');
+    d.fl.rotation.z=Math.sin(d.t*14)*.3*(u<.7?1:.4);
+    if(!d.sOut&&y>-.2){d.sOut=true;spawnSplash(x,z,1.1)}
+    if(!d.sIn&&u>.5&&y<-.2){d.sIn=true;spawnSplash(x,z,1.4)}
+    if(u>=1){d.active=false;d.g.visible=false;d.wait=d.lead?3+Math.random()*7:1e9}
   });
+  ripples.forEach(r=>{if(!r.on)return;r.t+=1/60;const s=1+r.t*5;r.m.scale.set(s,s,s);r.m.material.opacity=Math.max(0,.6-r.t*.6);if(r.t>1){r.on=false;r.m.visible=false}});
   // 水花粒子更新
   splashes.forEach(sp=>{
     if(!sp.active)return;
@@ -766,7 +768,7 @@ $('#fav').onclick=()=>openList('star');
 $('#lsc').onclick=closeList;
 $('#tab-all').onclick=()=>{tab='all';renderList()};
 $('#tab-star').onclick=()=>{tab='star';renderList()};
-addEventListener('keydown',e=>{if(e.key==='Escape'){closeList();closeQ();$('#to').classList.remove('on')}});
+addEventListener('keydown',e=>{if(e.key==='Escape'){closeList();closeQ()}});
 
 /* ---------- 答題 ---------- */
 let cur=0,qi=0;
@@ -811,41 +813,6 @@ function boom(n){const E=['⭐','🎉','🌟','🎈','✨'];for(let i=0;i<n;i++)
 $('#wc').onclick=()=>$('#wo').classList.remove('on');
 
 /* ---------- 老師：外部 AI → Markdown → 島嶼 ---------- */
-const TEACHER_PROMPT=`你是國小老師的助理。請依使用者上傳或貼上的教材，轉成「知識島探險」可用的 Markdown。
-
-規則：
-1. 用繁體中文，語氣適合國小生
-2. 分成 3 到 6 個章節（每章 = 一座島）
-3. 每章 2 到 3 題四選一
-4. 只根據教材內容，不要編造教材沒有的知識
-5. 只輸出 Markdown，不要其他說明
-6. 「問AI」必須寫出具體主題或題目大意（用「」包起來），禁止只寫空泛的「請解釋和這題有關的知識」
-
-格式必須如下（請嚴格遵守標題層級與欄位名稱）：
-
-# 教材名稱
-
-## 章節名稱
-摘要：給小朋友看的重點（50到100字）
-問AI：我是國小生。請用簡單的話說明「本章主題關鍵字」，不要告訴我考題答案。
-
-### 題目
-題目文字？
-- A. 選項一
-- B. 選項二
-- C. 選項三
-- D. 選項四
-答案：B
-解釋：簡短說明為什麼對
-問AI：我是國小生。題目是：「這裡寫完整題目」。請說明相關知識與原因，不要直接說選哪一個，也不要列出選項。
-
-### 題目
-（下一題，同上格式）
-
-## 下一章節名稱
-（同上）
-`;
-
 function parseLessonMarkdown(md){
   const lines=String(md||'').replace(/\r\n/g,'\n').split('\n');
   let title='教材',chapters=[],ch=null,q=null,mode='';
@@ -878,79 +845,6 @@ function parseLessonMarkdown(md){
   return {title,chapters};
 }
 
-$('#tb').onclick=()=>{closeList();$('#to').classList.add('on');
-  const el=$('#teacherPromptText');if(el&&!el.dataset.ready){el.textContent=TEACHER_PROMPT;el.dataset.ready='1'}
-};
-$('#tc').onclick=()=>$('#to').classList.remove('on');
-$('#demo').onclick=()=>{lesson=DEMO;stars=[];save();build();$('#tm').textContent='已載入範例教材。'};
-$('#rst').onclick=()=>{stars=[];save();setHUD();$('#tm').textContent='星星已重設。'};
-$('#copyPrompt').onclick=async()=>{
-  try{await navigator.clipboard.writeText(TEACHER_PROMPT);$('#tm').textContent='提示詞已複製，可到 Grok / Gemini 貼上。'}
-  catch(e){$('#tm').textContent='無法自動複製，請手動選取上方提示詞。'}
-};
-$('#mdfile').onchange=async e=>{
-  const f=e.target.files[0];if(!f)return;
-  try{$('#txt').value=await f.text();$('#tm').textContent='已讀取 '+f.name+'，請按「載入成島嶼」。'}
-  catch(err){$('#tm').textContent='讀取檔案失敗'}
-};
-function lessonToMarkdown(les){
-  const L=les||lesson;if(!L)return '';
-  let md='# '+(L.title||'教材')+'\n\n';
-  (L.chapters||[]).forEach(ch=>{
-    md+='## '+(ch.title||'章節')+'\n';
-    md+='摘要：'+(ch.summary||'')+'\n';
-    if(ch.aiAsk)md+='問AI：'+ch.aiAsk+'\n';
-    md+='\n';
-    (ch.questions||[]).forEach(q=>{
-      md+='### 題目\n'+(q.q||'')+'\n';
-      (q.options||[]).forEach((o,i)=>{md+='- '+('ABCD'[i]||(i+1))+'. '+o+'\n'});
-      md+='答案：'+('ABCD'[q.answer]||'A')+'\n';
-      if(q.explain)md+='解釋：'+q.explain+'\n';
-      if(q.aiAsk)md+='問AI：'+q.aiAsk+'\n';
-      md+='\n';
-    });
-  });
-  return md;
-}
-function downloadText(filename,text,mime){
-  const blob=new Blob([text],{type:mime||'text/plain;charset=utf-8'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-}
-$('#loadMd').onclick=()=>{
-  const txt=$('#txt').value.trim(),m=$('#tm');
-  if(txt.length<20){m.textContent='請先貼上或上傳 Markdown。';return}
-  try{
-    const r=parseLessonMarkdown(txt);
-    const ok=r.chapters.every(c=>c.questions.every(q=>q.q&&q.options.length>=2));
-    if(!ok)throw new Error('題目不完整');
-    lesson=r;stars=[];save();saveStars();build();
-    m.textContent='已載入 '+r.chapters.length+' 座島（'+r.title+'）。請按「下載 lesson.md」放到 GitHub 專案根目錄，學生才能看到。';
-  }catch(err){m.textContent='載入失敗：請確認 Markdown 格式（# 教材、## 章節、### 題目、答案：A）';}
-};
-$('#dlMd').onclick=()=>{
-  if(!lesson){$('#tm').textContent='目前沒有教材';return}
-  downloadText('lesson.md',lessonToMarkdown(lesson),'text/markdown;charset=utf-8');
-  $('#tm').textContent='已下載 lesson.md → 放到 GitHub Pages 網站根目錄（和 index.html 同層）再推送。';
-};
-$('#dlJson').onclick=()=>{
-  if(!lesson){$('#tm').textContent='目前沒有教材';return}
-  downloadText('lesson.json',JSON.stringify(lesson,null,2),'application/json');
-  $('#tm').textContent='已下載 lesson.json → 也可放在網站根目錄（優先於 lesson.md）。';
-};
-$('#gen').onclick=async()=>{
-  const txt=$('#txt').value.trim(),m=$('#tm');if(txt.length<30){m.textContent='請先貼上教材文字。';return}
-  let sample=null;try{sample=window.claude?await claude.use('sample'):null}catch(e){}
-  if(!sample){m.textContent='本頁 AI 不可用。請改用 Grok/Gemini 轉 Markdown 後按「載入成島嶼」。';return}
-  const b=$('#gen');b.disabled=true;m.textContent='AI 正在整理章節與題目…';
-  try{
-    const r=await sample.json(`你是國小老師的助理。請把下列教材分成 3 到 6 個章節，每章 2 到 3 題四選一選擇題。用繁體中文。只輸出 JSON：{"title":"教材名稱","chapters":[{"title":"章節名","summary":"摘要","aiAsk":"問AI句子","questions":[{"q":"題目","options":["A","B","C","D"],"answer":0,"explain":"解釋","aiAsk":"問AI句子"}]}]}。answer 為 0-3。\n\n教材：\n${txt}`);
-    const ok=r&&Array.isArray(r.chapters)&&r.chapters.length&&r.chapters.every(c=>c.title&&Array.isArray(c.questions)&&c.questions.length&&c.questions.every(q=>q.q&&Array.isArray(q.options)&&q.options.length>=2&&Number.isInteger(q.answer)&&q.answer<q.options.length));
-    if(!ok)throw 0;
-    lesson=r;stars=[];save();build();m.textContent='完成！已產生 '+r.chapters.length+' 座島嶼。';setTimeout(()=>$('#to').classList.remove('on'),900);
-  }catch(err){m.textContent='產生失敗，請改用外部 AI → Markdown 流程。'}
-  b.disabled=false;
-};
 /* ---------- 多人 MQTT（mqttgo.io） ---------- */
 const MP_TOPIC='islandquest/v1/players';
 const PALETTE=[[0xd9573f,0x3b2a20],[0x4a8fb5,0x1c1c1c],[0xe0a63a,0x8a5a2b],[0x2bb673,0x1a3a28],[0x9b59b6,0x2a1a3a],[0xe67e22,0x4a2a10],[0x1abc9c,0x0a3a30],[0xe91e63,0x3a0a20]];
@@ -1388,20 +1282,7 @@ async function loadCatalog(){
       {id:'json',title:'預設教材 (lesson.json)',file:'lesson.json'}
     ];
   }
-  const sel=$('#lessonSelect');
-  if(sel){
-    const cur=getLessonQuery();
-    sel.innerHTML=lessonCatalog.map(it=>{
-      const v=it.id||it.file;
-      const label=it.title||it.file;
-      return `<option value="${esc(v)}" data-file="${esc(it.file)}">${esc(label)}</option>`;
-    }).join('');
-    // 若 query 是檔名也試著選中
-    if(cur){
-      const hit=[...sel.options].find(o=>o.value===cur||o.getAttribute('data-file')===cur);
-      if(hit)sel.value=hit.value;
-    }
-  }
+  // student page: no lessonSelect UI
 }
 function resolveLessonFile(key){
   if(!key)return null;
@@ -1429,6 +1310,11 @@ async function loadSharedLesson(preferredKey){
 function starsStorageKey(){
   const k=currentLessonKey||getLessonQuery()||'default';
   return 'isl_stars_'+k;
+}
+function downloadText(filename,text,mime){
+  const blob=new Blob([text],{type:mime||'text/plain;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=filename;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
 }
 function exportRaceCSV(){
   const rows=[['排名','暱稱','分數','角色','房間','教材','時間']];
@@ -1478,14 +1364,7 @@ async function switchLesson(key){
   if(m)m.textContent='已切換教材：'+(lesson.title||key);
   return true;
 }
-$('#lessonGo')&&($('#lessonGo').onclick=async()=>{
-  const sel=$('#lessonSelect');
-  const key=sel?sel.value:'';
-  const file=sel&&sel.selectedOptions[0]?sel.selectedOptions[0].getAttribute('data-file'):'';
-  await switchLesson(key||file||'');
-});
 $('#rkExport')&&($('#rkExport').onclick=()=>exportRaceCSV());
-$('#exportStars')&&($('#exportStars').onclick=()=>{exportStarsCSV();$('#tm').textContent='已下載本機闖關進度 CSV'});
 
 // 覆寫星星存檔 key（依教材）
 const _saveStars=saveStars;
