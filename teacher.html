@@ -97,6 +97,13 @@ ol.steps{margin:8px 0 0 1.2em;padding:0;font-size:14px;line-height:1.7;font-weig
 
   <div class="card">
     <h2>① 複製提示詞 → 請 AI 轉教材</h2>
+    <label class="sec" for="grade">學生年級（會寫進「問AI」，讓 AI 的解說程度剛好）</label>
+    <select id="grade">
+      <option value="三年級">國小三年級</option>
+      <option value="四年級">國小四年級</option>
+      <option value="五年級" selected>國小五年級</option>
+      <option value="六年級">國小六年級</option>
+    </select>
     <div class="ai-box">
       <div class="ai-title">
         <span>提示詞</span>
@@ -152,15 +159,20 @@ ol.steps{margin:8px 0 0 1.2em;padding:0;font-size:14px;line-height:1.7;font-weig
 
 <script>
 const $=s=>document.querySelector(s);
-const TEACHER_PROMPT=`你是國小老師的助理。請依使用者上傳或貼上的教材，轉成「知識島探險」可用的 Markdown。
+/* 給學生問 AI 的「說話規則」：控制 AI 回答的長度、用詞與例子，讓國小生看得懂 */
+const kidRules=`請照這些規則回答：1.用生活中的比喻或例子；2.最多 5 句話，每句不超過 20 個字；3.不要用難的專有名詞，一定要用時馬上用括號解釋；4.只幫我理解，不要告訴我考題答案`;
+function buildTeacherPrompt(grade){
+  return `你是國小老師的助理。請依使用者上傳或貼上的教材，轉成「知識島探險」可用的 Markdown。
 
 規則：
-1. 用繁體中文，語氣適合國小生
+1. 用繁體中文，語氣適合國小${grade}學生
 2. 分成 3 到 6 個章節（每章 = 一座島）
 3. 每章 5 到 6 題四選一
 4. 只根據教材內容，不要編造教材沒有的知識
 5. 只輸出 Markdown，不要其他說明
 6. 「問AI」必須寫出具體主題或題目大意（用「」包起來），禁止只寫空泛的「請解釋和這題有關的知識」
+7. 「問AI」是學生要貼給 AI 的句子，必須完整保留範本中「請照這些規則回答」那一整段，一字不改，只替換「」裡的主題或題目
+8. 摘要與解釋也要用${grade}學生看得懂的短句，避免艱深詞彙
 
 格式必須如下（請嚴格遵守標題層級與欄位名稱）：
 
@@ -168,7 +180,7 @@ const TEACHER_PROMPT=`你是國小老師的助理。請依使用者上傳或貼�
 
 ## 章節名稱
 摘要：給小朋友看的重點（50到100字）
-問AI：我是國小生。請用簡單的話說明「本章主題關鍵字」，不要告訴我考題答案。
+問AI：我是國小${grade}學生。請用簡單的話說明「本章主題關鍵字」。${kidRules}
 
 ### 題目
 題目文字？
@@ -177,8 +189,8 @@ const TEACHER_PROMPT=`你是國小老師的助理。請依使用者上傳或貼�
 - C. 選項三
 - D. 選項四
 答案：B
-解釋：簡短說明為什麼對
-問AI：我是國小生。題目是：「這裡寫完整題目」。請說明相關知識與原因，不要直接說選哪一個，也不要列出選項。
+解釋：簡短說明為什麼對（${grade}學生看得懂的短句）
+問AI：我是國小${grade}學生。題目是：「這裡寫完整題目」。請說明相關知識與原因，不要直接說選哪一個，也不要列出選項。${kidRules}
 
 ### 題目
 （下一題，同上格式；每章共 5～6 題）
@@ -188,6 +200,8 @@ const TEACHER_PROMPT=`你是國小老師的助理。請依使用者上傳或貼�
 
 請直接給我Md檔案，不要省略、不要只給部分、不要加額外說明。
 `;
+}
+let TEACHER_PROMPT=buildTeacherPrompt('五年級');
 
 const DEMO={title:"太陽系",chapters:[
 {title:"太陽與行星",summary:"太陽是太陽系的中心，它會發光發熱。八大行星繞著太陽轉動，地球是離太陽第三近的行星。",aiAsk:"我是國小生。請用簡單的話說明：太陽系的中心是什麼？八大行星離太陽由近到遠大概是誰？不要告訴我考題答案。",questions:[
@@ -204,7 +218,7 @@ let lesson=null;
 function esc(s){return String(s??'').replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}
 function defaultAiAsk(text){
   const t=String(text||'').replace(/\s+/g,' ').trim().slice(0,100);
-  return `我是國小生。我想理解：「${t}」。請用簡單的話說明相關知識與原因，不要直接告訴我選擇題要選哪一個，也不要列出 A B C D。`;
+  return `我是國小學生。我想理解：「${t}」。請用簡單的話說明相關知識與原因，不要直接告訴我選擇題要選哪一個，也不要列出 A B C D。${kidRules}`;
 }
 function parseLessonMarkdown(md){
   const lines=String(md||'').replace(/\r\n/g,'\n').split('\n');
@@ -273,15 +287,19 @@ function setMsg(t,ok){
   const m=$('#tm');m.textContent=t||'';m.className='msg'+(ok===true?' ok':ok===false?' err':'');
 }
 
-$('#teacherPromptText').textContent=TEACHER_PROMPT;
+function refreshPrompt(){
+  TEACHER_PROMPT=buildTeacherPrompt($('#grade').value);
+  $('#teacherPromptText').textContent=TEACHER_PROMPT;
+  $('#openChatGPT').href='https://chatgpt.com/?q='+encodeURIComponent(TEACHER_PROMPT);
+}
+$('#grade').onchange=refreshPrompt;
+refreshPrompt();
 $('#copyPrompt').onclick=async()=>{
   try{
     await navigator.clipboard.writeText(TEACHER_PROMPT);
     setMsg('提示詞已複製，可到 Gemini / ChatGPT / Grok 貼上。',true);
   }catch(e){setMsg('無法自動複製，請手動選取上方提示詞。',false)}
 };
-// Prefill ChatGPT with prompt when possible
-$('#openChatGPT').href='https://chatgpt.com/?q='+encodeURIComponent(TEACHER_PROMPT);
 
 $('#mdfile').onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
