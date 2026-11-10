@@ -87,6 +87,7 @@ ol.steps{margin:8px 0 0 1.2em;padding:0;font-size:14px;line-height:1.7;font-weig
     <h2>怎麼給全班用？</h2>
     <ol class="steps">
       <li>用下方提示詞，把教材丟給 Grok / Gemini / ChatGPT 轉成 Markdown</li>
+      <li>可直接將AI產生的MD檔上傳到GITHUB教材資料夾 並修改教材資料夾內的lessons.json若有多筆請依序增加並用逗號分開 如果選擇執行此方式就無需再往下執行其他步驟</li>
       <li>把產出的 Markdown 貼上來（或上傳 .md）→ 按「預覽檢查」</li>
       <li>確認無誤後「下載 lesson.md」或「lesson.json」</li>
       <li>放到網站的 <code>教材/</code> 資料夾（和知識島 HTML 同層下的資料夾）並推送</li>
@@ -185,7 +186,7 @@ const TEACHER_PROMPT=`你是國小老師的助理。請依使用者上傳或貼�
 ## 下一章節名稱
 （同上）
 
-請直接給我完整的 Markdown 檔內容，不要省略、不要只給部分、不要加額外說明。
+請直接給我Md檔案，不要省略、不要只給部分、不要加額外說明。
 `;
 
 const DEMO={title:"太陽系",chapters:[
