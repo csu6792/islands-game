@@ -224,7 +224,7 @@ textarea{height:110px;resize:vertical}
   <div class="row" style="justify-content:center;margin-top:8px">
     <button class="btn" id="join">進入島嶼 ➜</button>
   </div>
-  <p style="font-size:12px;color:var(--muted);margin-top:10px">透過 MQTTGO.io 即時連線</p>
+  <p style="font-size:12px;color:var(--muted);margin-top:10px">透過即時連線</p>
 </div></div>
 
 <div id="online" hidden>
@@ -656,6 +656,8 @@ function build(){
     const el=document.createElement('button');el.className='pl';el.type='button';
     el.innerHTML='<b>主</b><span>主島大廳</span><u></u>';el.onclick=()=>{if(typeof openRoomMenu==='function')openRoomMenu();else if(typeof mpVisit==='function')mpVisit(-1)};
     LB.appendChild(el);
+    // 點擊主島 3D 本體也可開大廳選單
+    g.traverse(m=>{if(m.isMesh){m.userData.hub=true;hit.push(m)}});
     G.add(g);hubG=g;
     window._hubLabel=el;
   })();
@@ -703,7 +705,6 @@ function build(){
   const bt=boat();bt.position.set(Math.sin(4.2)*boatRad,0,Math.cos(4.2)*boatRad);G.add(bt);
   floaters.push({g:bt,ph:4.2,rot:0,sail:true,rad:boatRad,spd:.055});
   [[1.3,base-2],[4.6,base-1]].forEach(([a,d],k)=>{const bo=buoy();bo.position.set(Math.sin(a)*d,0,Math.cos(a)*d);G.add(bo);floaters.push({g:bo,ph:k*2,rot:0})});
-  guide=document.createElement('div');guide.className='guide';guide.textContent='小隊長帶路';LB.appendChild(guide);
   dist=r*2.2+12;setHUD();
 }
 function setHUD(){const n=lesson.chapters.length,k=stars.filter(Boolean).length;$('#st').textContent=k;
@@ -721,7 +722,12 @@ cv.addEventListener('pointerup',e=>{ptrs.delete(e.pointerId);if(moved<8&&ptrs.si
 cv.addEventListener('pointercancel',e=>ptrs.delete(e.pointerId));
 cv.addEventListener('wheel',e=>{e.preventDefault();hideHint();dist=Math.min(50,Math.max(10,dist+e.deltaY*.02))},{passive:false});
 const rc=new THREE.Raycaster(),V=new THREE.Vector3();
-function pick(e){rc.setFromCamera({x:e.clientX/innerWidth*2-1,y:-(e.clientY/innerHeight)*2+1},cam);const h=rc.intersectObjects(hit)[0];if(h)openIsland(h.object.userData.i)}
+function pick(e){
+  rc.setFromCamera({x:e.clientX/innerWidth*2-1,y:-(e.clientY/innerHeight)*2+1},cam);
+  const h=rc.intersectObjects(hit)[0];if(!h)return;
+  if(h.object.userData.hub){if(typeof openRoomMenu==='function')openRoomMenu();return}
+  if(h.object.userData.i!=null)openIsland(h.object.userData.i);
+}
 const wrapPi=a=>Math.atan2(Math.sin(a),Math.cos(a));
 let lastT=null;
 let frameN=0;
@@ -806,8 +812,6 @@ function loop(t){if(document.hidden||(document.querySelector(".ov.on")&&(frameN+
     window._hubLabel.style.zIndex=Math.round(1000-cam.position.length()*10);
     window._hubLabel.style.transform='translate(-50%,-100%) translate('+((V.x*.5+.5)*innerWidth)+'px,'+((-V.y*.5+.5)*innerHeight)+'px)';
   }
-  if(guide){const nx=items.find(o=>!stars[o.i]);if(!nx||(V.set(nx.g.position.x,1.1,nx.g.position.z).project(cam)).z>1)guide.style.display='none';
-    else{guide.style.display='block';guide.style.transform='translate(-50%,-100%) translate('+((V.x*.5+.5)*innerWidth)+'px,'+((-V.y*.5+.5)*innerHeight+Math.sin(t*3)*3)+'px)'}}
   if(window._peerTick)window._peerTick();R.render(S,cam);requestAnimationFrame(loop)}
 
 /* ---------- 背景音樂（讀取外部 MP3：island_day.mp3 / island_night.mp3，需與 HTML 放同一資料夾） ---------- */
@@ -1115,8 +1119,7 @@ function connectMqtt(){
 $('#join').onclick=()=>{
   const n=$('#nick').value.trim();
   if(!getLessonQuery()&&!pickedLessonKey&&lessonCatalog.length>1){
-    $('#lm').textContent='請先點選一個探險主題';
-    return;
+    $('#lm').textContent='請先點選一個探險主題';return;
   }
   if(n.length<1){$('#lm').textContent='請輸入暱稱';return}
   if(n.length>12){$('#lm').textContent='暱稱最多 12 字';return}
@@ -1344,7 +1347,7 @@ function raceOnIslandDone(islandIdx){
   raceDone[islandIdx]=true;
   const pts=1;
   raceScore+=pts;
-  raceScoreAt=Date.now(); // 用於同分時：先完成者排名較前
+  raceScoreAt=Date.now();
   publishRaceScore();
   return pts;
 }
@@ -1352,7 +1355,7 @@ function raceOnIslandDone(islandIdx){
 function onRaceEnd(){
   if(roomStatus==='ended'&&$('#roomRank').classList.contains('on'))return;
   roomStatus='ended';stopRaceTimer();$('#raceHud').hidden=true;
-  // 排名：分數高優先；同分則先達到者（scoreAt 較早）在上
+  // 排名（排除房主）
   const rankCmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt|0,tb=b.scoreAt|0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
   const ranked=[...racePlayers.values()].filter(p=>!p.isHost).sort(rankCmp);
   const all=[...racePlayers.values()].sort(rankCmp);
@@ -1401,10 +1404,7 @@ async function fetchLessonFile(file){
   return null;
 }
 async function loadCatalog(){
-  const parseJsonLoose=t=>{
-    const cleaned=String(t).replace(/,\s*([}\]])/g,'$1');
-    return JSON.parse(cleaned);
-  };
+  const parseJsonLoose=t=>{const cleaned=String(t).replace(/,\s*([}\]])/g,'$1');return JSON.parse(cleaned)};
   try{
     const r=await fetch(lessonPath('lessons.json'),{cache:'no-store'});
     if(r.ok){
@@ -1459,8 +1459,7 @@ function renderLessonPicker(){
   box.querySelectorAll('button[data-k]').forEach(b=>{
     b.onclick=async()=>{
       const k=b.getAttribute('data-k');
-      pickedLessonKey=k;
-      setLessonQuery(k);
+      pickedLessonKey=k;setLessonQuery(k);
       box.querySelectorAll('button').forEach(x=>x.setAttribute('aria-selected','false'));
       b.setAttribute('aria-selected','true');
       if(hint)hint.textContent='已選擇，可以輸入暱稱進入';
@@ -1471,9 +1470,7 @@ function renderLessonPicker(){
         if(stars.length!==lesson.chapters.length)stars=lesson.chapters.map(()=>false);
         saveStars();build();
         $('#lm').textContent='已載入：'+(lesson.title||k);
-      }else{
-        $('#lm').textContent='找不到這個教材，請請老師檢查 教材/ 資料夾';
-      }
+      }else{$('#lm').textContent='找不到這個教材，請請老師檢查 教材/ 資料夾'}
     };
   });
 }
@@ -1511,8 +1508,7 @@ function downloadText(filename,text,mime){
 }
 function exportRaceCSV(){
   const rows=[['排名','暱稱','分數','角色','房間','教材','時間']];
-  const rankCmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt|0,tb=b.scoreAt|0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
-  const ranked=[...racePlayers.values()].sort(rankCmp);
+  const ranked=[...racePlayers.values()].sort((a,b)=>b.score-a.score);
   ranked.forEach((p,i)=>{
     rows.push([
       i+1,
