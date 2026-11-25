@@ -730,8 +730,9 @@ function bubbleTex(text){
     x.fillStyle='#fffdf5';x.fillRect(w/2-12,by+bh-5,24,9);
     x.fillStyle='#4a3a30';x.font='bold 50px sans-serif';x.textAlign='center';x.textBaseline='middle';x.fillText(text,w/2,by+bh/2+3)},256,128);
   bubbleTexCache.set(text,t);return t}
+function raceIslandCount(){return typeof raceDone!=='undefined'?Object.keys(raceDone).length:0}
 function bubbleText(){
-  const n=lesson.chapters.length,run=raceRunning(),k=run?raceScore:stars.filter(Boolean).length;
+  const n=lesson.chapters.length,run=raceRunning(),k=run?raceIslandCount():stars.filter(Boolean).length;
   if(n&&k>=n)return '全部完成！🏆';
   if(k>0&&k>=n/2)return '快完成了！';
   if(k>0)return '做得好！';
@@ -1147,9 +1148,13 @@ function renderQ(){
   $('#x').onclick=closeQ;bindCopy(c);
   c.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
     const k=+b.dataset.k;
-    if(k===q.answer){b.classList.add('ok');c.querySelectorAll('.opt').forEach(o=>o.disabled=true);$('#m').textContent='🎉 答對了！'+(q.explain||'');
+    if(k===q.answer){b.classList.add('ok');c.querySelectorAll('.opt').forEach(o=>o.disabled=true);
+      const got=(typeof raceQCorrect==='function')?raceQCorrect(cur,qi):0;
+      $('#m').textContent='🎉 答對了！'+(got>0?`+${got} 分　`:'')+(q.explain||'');
       const nx=$('#nx');nx.style.display='';nx.textContent=qi<n-1?'下一題 ➜':'拿星星 ⭐';nx.onclick=()=>{if(qi<n-1){qi++;renderQ()}else finish()}}
-    else{b.classList.add('bad');b.disabled=true;$('#m').textContent='💪 再想想看，再試一次！也可先複製上方問句去問 AI。'}});
+    else{b.classList.add('bad');b.disabled=true;
+      let tip='';if(typeof raceQWrong==='function'&&raceRunning()&&!roomHost){raceQWrong(cur,qi);tip=`（這題現在答對只剩 ${raceQNextPts(cur,qi)} 分）`}
+      $('#m').textContent='💪 再想想看，再試一次！'+tip+'也可先複製上方問句去問 AI。'}});
 }
 function finish(){
   if(!raceRunning()){closeQ();return} // 競賽已結束 / 非競賽模式：不給星星、不廣播
@@ -1157,7 +1162,7 @@ function finish(){
   let raceBonus='',pts=0;
   if(typeof raceOnIslandDone==='function'){
     pts=raceOnIslandDone(cur);
-    if(pts>0){raceBonus=`<p style="text-align:center;font-weight:900;color:var(--brand)">競賽 +${pts} 分！</p>`;if(typeof bubbleCheer==='function')bubbleCheer(raceScore>=lesson.chapters.length?'全部完成！🏆':'太棒了！🎉')}
+    if(pts>0){raceBonus=`<p style="text-align:center;font-weight:900;color:var(--brand)">這座島共得 ${pts} 分！（目前總分 ${raceScore}）</p>`;if(typeof bubbleCheer==='function')bubbleCheer(raceIslandCount()>=lesson.chapters.length?'全部完成！🏆':'太棒了！🎉')}
   }
   stars[cur]=true;save();saveStars();setHUD();
   // 本場競賽第一次完成這座島：本機顯示通知 + MQTT 廣播給同房以外的人
@@ -1456,7 +1461,7 @@ build=function(){
 const ROOM_ROOT='islandquest/v1/rooms';
 let roomCode='',roomHost=false,roomStatus='none'; // none|lobby|running|ended
 let roomDuration=180,roomStartAt=0,roomEndAt=0;
-let raceScore=0,raceScoreAt=0,raceDone={},racePlayers=new Map(); // id->{name,score,scoreAt,isHost}
+let raceScore=0,raceScoreAt=0,raceDone={},raceQ={},raceIslandPts={},racePlayers=new Map(); // id->{name,score,scoreAt,isHost}
 let raceTimer=null,roomSubbed='';
 
 function genRoomCode(){
@@ -1490,7 +1495,7 @@ $('#durTabs').onclick=e=>{
 $('#rcGo').onclick=()=>{
   if(!mqttClient?.connected){$('#rcMsg').textContent='尚未連線';return}
   roomCode=genRoomCode();roomHost=true;roomStatus='lobby';
-  raceScore=0;raceScoreAt=0;raceDone={};racePlayers.clear();
+  raceScore=0;raceScoreAt=0;raceDone={};raceQ={};raceIslandPts={};racePlayers.clear();
   const state={code:roomCode,hostId:myId,hostName:myName,status:'lobby',durationSec:roomDuration,startAt:0,endAt:0,ts:Date.now()};
   mqttClient.publish(roomTopic(),JSON.stringify(state),{qos:0,retain:true});
   publishRaceScore();
@@ -1503,7 +1508,7 @@ $('#rjGo').onclick=()=>{
   if(!/^[A-Z0-9]{6}$/.test(code)){$('#rjMsg').textContent='請輸入 6 碼英文或數字';return}
   if(!mqttClient?.connected){$('#rjMsg').textContent='尚未連線';return}
   roomCode=code;roomHost=false;roomStatus='joining';
-  raceScore=0;raceScoreAt=0;raceDone={};racePlayers.clear();
+  raceScore=0;raceScoreAt=0;raceDone={};raceQ={};raceIslandPts={};racePlayers.clear();
   let gotState=false;
   const once=()=>{gotState=true};
   const prev=handleRoomMsg;
@@ -1625,7 +1630,7 @@ $('#rlStart').onclick=()=>{
   const state={code:roomCode,hostId:myId,hostName:myName,status:'running',durationSec:roomDuration,startAt:roomStartAt,endAt:roomEndAt,ts:now};
   mqttClient.publish(roomTopic(),JSON.stringify(state),{qos:0,retain:true});
   // 重置自己分數（房主不計分）
-  raceScore=0;raceScoreAt=0;raceDone={};publishRaceScore();
+  raceScore=0;raceScoreAt=0;raceDone={};raceQ={};raceIslandPts={};publishRaceScore();
   onRaceStart();
 };
 $('#rlBack').onclick=()=>hideRoomOvs(); // 競賽中點主島看到房間視窗，可直接關閉回去答題
@@ -1679,16 +1684,40 @@ function tickRace(){
 }
 function stopRaceTimer(){if(raceTimer){clearInterval(raceTimer);raceTimer=null}}
 
-function raceOnIslandDone(islandIdx){
-  if(roomStatus!=='running')return 0;
-  if(roomHost)return 0; // 房主不計分
-  if(raceDone[islandIdx])return 0;
-  raceDone[islandIdx]=true;
-  const pts=1;
+// 每題配分：第 1 次答對 10 分，第 2 次 5 分，第 3 次 2 分，第 4 次以後 1 分（可自行調整）
+const RACE_Q_PTS=[10,5,2,1];
+function raceQPts(wrong){return RACE_Q_PTS[Math.min(wrong,RACE_Q_PTS.length-1)]}
+function raceQKey(island,q){return island+'_'+q}
+function raceCounts(){return roomStatus==='running'&&!roomHost} // 房主不計分
+// 答錯：累計該題錯誤次數（離開再進來也不會重置）
+function raceQWrong(island,q){
+  if(!raceCounts())return;
+  const k=raceQKey(island,q),r=raceQ[k]||(raceQ[k]={wrong:0,done:false});
+  if(!r.done)r.wrong++;
+}
+// 目前這題答對最多還能拿幾分（給學生看的提示）
+function raceQNextPts(island,q){const r=raceQ[raceQKey(island,q)];return raceQPts(r?r.wrong:0)}
+// 答對：依錯誤次數給分，每題只計一次，回傳本題得分
+function raceQCorrect(island,q){
+  if(!raceCounts())return 0;
+  const k=raceQKey(island,q),r=raceQ[k]||(raceQ[k]={wrong:0,done:false});
+  if(r.done)return 0;
+  r.done=true;
+  const pts=raceQPts(r.wrong);
   raceScore+=pts;
+  raceIslandPts[island]=(raceIslandPts[island]||0)+pts;
   raceScoreAt=Date.now();
   publishRaceScore();
   return pts;
+}
+// 完成整座島：只負責標記（星星通知用），分數已在每題累計
+function raceOnIslandDone(islandIdx){
+  if(roomStatus!=='running')return 0;
+  if(roomHost)return 0;
+  if(raceDone[islandIdx])return 0;
+  raceDone[islandIdx]=true;
+  publishRaceScore();
+  return raceIslandPts[islandIdx]||0;
 }
 
 function onRaceEnd(){
