@@ -111,7 +111,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 #adScroll.show{display:block}
 #adScroll .sc{position:relative;display:flex;align-items:center;width:32px;pointer-events:auto;cursor:pointer;transition:width .9s cubic-bezier(.3,.8,.3,1);outline-offset:6px}
 #adScroll.open .sc{width:var(--sw)}
-#adScroll .rod{flex:none;width:16px;height:calc(var(--ph) + 14px);border-radius:999px;background:linear-gradient(90deg,rgba(255,255,255,.30),rgba(255,255,255,0) 50%,rgba(0,0,0,.16)),var(--brand);z-index:1}
+#adScroll .rod{flex:none;width:16px;height:calc(var(--ph) + 14px);border-radius:999px;background:linear-gradient(90deg,rgba(255,255,255,.35),rgba(255,255,255,0) 45%,rgba(60,40,20,.14)),var(--panel);box-shadow:inset 0 0 0 2px var(--line);z-index:1}
 #adScroll .paper{position:relative;flex:1;min-width:0;height:var(--ph);overflow:hidden;background:var(--panel);border-top:3px solid var(--panel);border-bottom:3px solid var(--panel)}
 #adScroll .paper img{display:block;width:var(--pw);height:100%;max-width:none;-webkit-user-drag:none;user-select:none}
 #adScroll .paper::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(60,40,20,.14),transparent 6%,transparent 94%,rgba(60,40,20,.14))}
@@ -1021,7 +1021,7 @@ const AD_IMG='ad-banner.png';  // 布條圖片：與 HTML 放同一資料夾
 const AD_SPEED=2.2;            // 巡航速度（單位/秒），繞一圈約 70~80 秒
 const AD_ALT=10;               // 飛行高度
 const AD_W=12;                 // 布條寬度（高度依圖片比例自動計算）
-let adG=null,adGeo=null,adBase=null,adMats=[],adHit=[],adR=30,adA=-.8;
+let adG=null,adGeo=null,adBase=null,adMats=[],adHit=[],adR=30,adA=-.8,adK=1;
 const adGap=2.2,adYc=.15;
 const balTex=tex((x,w,h)=>{const cols=['#c0694a','#faf5ec','#4fb3c4','#faf5ec'],n=12;for(let k=0;k<n;k++){x.fillStyle=cols[k%4];x.fillRect(k*w/n,0,w/n+1,h)}},256,128);
 function adRod(g,a,b,r,col){const d=new THREE.Vector3().subVectors(b,a),L=d.length(),m=mk(new THREE.CylinderGeometry(r,r,L,4),col,0,0,0);
@@ -1046,11 +1046,12 @@ function initAd(t){
   const bal=adBalloon();bal.scale.setScalar(1.35);adG.add(bal);adG.userData.bal=bal;
   const geo=new THREE.PlaneGeometry(AD_W,H,32,1);geo.translate(-adGap-AD_W/2,0,0);adGeo=geo;adBase=geo.attributes.position.array.slice();
   const mF=new THREE.MeshBasicMaterial({map:t,side:THREE.FrontSide}),mB=new THREE.MeshBasicMaterial({map:t2,side:THREE.BackSide});adMats=[mF,mB];
-  [mF,mB].forEach(m=>{const b=new THREE.Mesh(geo,m);b.position.y=adYc;b.frustumCulled=false;b.userData.ad=true;adG.add(b);adHit.push(b)});
-  adG.add(mk(new THREE.CylinderGeometry(.05,.05,H+.2,6),0x6b5340,-adGap,adYc,0));
-  const bk=new THREE.Vector3(-.3,.55,0);
-  adRod(adG,bk,new THREE.Vector3(-adGap,adYc+H/2,0),.017,0x4a4035);
-  adRod(adG,bk,new THREE.Vector3(-adGap,adYc-H/2,0),.017,0x4a4035);
+  const bk=new THREE.Vector3(-.3,.55,0),bn=new THREE.Group();bn.position.copy(bk);adG.add(bn);adG.userData.bn=bn;
+  [mF,mB].forEach(m=>{const q=new THREE.Mesh(geo,m);q.position.set(-bk.x,adYc-bk.y,0);q.frustumCulled=false;q.userData.ad=true;bn.add(q);adHit.push(q)});
+  bn.add(mk(new THREE.CylinderGeometry(.05,.05,H+.2,6),0x6b5340,-adGap-bk.x,adYc-bk.y,0));
+  const z0=new THREE.Vector3();
+  adRod(bn,z0,new THREE.Vector3(-adGap-bk.x,adYc+H/2-bk.y,0),.017,0x4a4035);
+  adRod(bn,z0,new THREE.Vector3(-adGap-bk.x,adYc-H/2-bk.y,0),.017,0x4a4035);
   S.add(adG);adRegHit()}
 function setupAd(base){adR=base+5;adRegHit()} // build() 重建島嶼後呼叫：調整航道並重新登錄點擊目標
 function adTick(t,dt){
@@ -1062,6 +1063,7 @@ function adTick(t,dt){
   if(!RM){const p=adGeo.attributes.position,b=adBase;
     for(let k=0;k<p.count;k++){const s=Math.min(1,Math.max(0,(-adGap-b[k*3])/AD_W));p.array[k*3+1]=b[k*3+1]-s*s*.45;p.array[k*3+2]=Math.sin(s*7-t*4.5)*(.03+.3*s)}
     p.needsUpdate=true}
+  adK+=((adOpen?0:1)-adK)*Math.min(1,dt*2.2);const bn=adG.userData.bn;bn.visible=adK>.02;bn.scale.setScalar(Math.max(.001,adK));
   const br=1-NK*.45;adMats.forEach(m=>m.color.setScalar(br))}
 let adOpen=false,adAsp=1053/231,adHideT=null;
 // 卷軸位置：優先放在標題卡（知識島探險家 ISLAND QUEST）右側、清單鈕左側；空間不夠（手機）時改放在標題區正下方
