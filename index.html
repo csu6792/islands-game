@@ -106,6 +106,9 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .btn{font:inherit;font-weight:900;font-size:16px;border:0;border-radius:999px;padding:11px 20px;background:var(--brand);color:var(--on-brand);box-shadow:0 3px 0 rgba(0,0,0,.18)}
 .btn.alt{background:transparent;color:var(--ink);border:2px solid var(--ink);box-shadow:none;padding:9px 18px}
 .btn:disabled{opacity:.5}
+a.btn{text-decoration:none;display:inline-block}
+#adOv .card{padding:14px}
+#adOv img{width:100%;display:block;border-radius:16px}
 .opt{display:flex;gap:12px;align-items:center;width:100%;text-align:left;font-size:18px;font-weight:700;margin:8px 0;padding:12px 14px;border-radius:18px;border:2.5px solid var(--line);background:transparent;color:var(--ink)}
 .opt .k{flex:none;width:30px;height:30px;border-radius:10px;background:var(--line);display:grid;place-items:center;font-family:var(--f-latin);font-size:15px}
 .opt.ok{background:var(--ok);border-color:var(--ok);color:#fff}
@@ -222,7 +225,7 @@ textarea{height:110px;resize:vertical}
   <button class="pill fav" id="fav">我的星星　（<span id="st">0</span>）</button>
 </div>
 
-<div id="hint"><span>拖曳旋轉・滾輪或雙指縮放・點小島開始挑戰</span></div>
+<div id="hint"><span>拖曳旋轉・滾輪或雙指縮放・點小島開始挑戰・點熱氣球看活動</span></div>
 
 <div id="bot">
   <div class="clk" id="clk" role="status" aria-label="遊戲時間"><span class="ic" id="clkI">🌅</span><span class="p" id="clkP">清晨</span><span class="t" id="clkT">07:00</span></div>
@@ -250,6 +253,14 @@ textarea{height:110px;resize:vertical}
   <h2>太棒了！全部島嶼都完成了！</h2>
   <p>你拿到所有的星星，真是小小探險家！</p>
   <button class="btn" id="wc">繼續探險</button>
+</div></div>
+
+<div class="ov" id="adOv"><div class="card" style="text-align:center">
+  <img id="adImg" alt="115年度高等教育深耕計畫">
+  <div class="row" style="justify-content:center">
+    <a class="btn" id="adLink" hidden target="_blank" rel="noopener">了解更多</a>
+    <button class="btn alt" id="adClose">關閉</button>
+  </div>
 </div></div>
 
 <div class="ov on" id="login"><div class="card">
@@ -847,7 +858,7 @@ function build(){
   const bt=boat();bt.position.set(Math.sin(4.2)*boatRad,0,Math.cos(4.2)*boatRad);G.add(bt);
   floaters.push({g:bt,ph:4.2,rot:0,sail:true,rad:boatRad,spd:.055});
   [[1.3,base-2],[4.6,base-1]].forEach(([a,d],k)=>{const bo=buoy();bo.position.set(Math.sin(a)*d,0,Math.cos(a)*d);G.add(bo);floaters.push({g:bo,ph:k*2,rot:0})});
-  dist=r*2.2+12;setHUD();
+  dist=r*2.2+12;setHUD();setupAd(base);
 }
 function setHUD(){const n=lesson.chapters.length,k=stars.filter(Boolean).length;$('#st').textContent=k;
   items.forEach(o=>{o.st.visible=!!stars[o.i];o.el.querySelector('u').textContent=stars[o.i]?'⭐':'';o.el.classList.toggle('done',!!stars[o.i])});
@@ -867,6 +878,7 @@ const rc=new THREE.Raycaster(),V=new THREE.Vector3();
 function pick(e){
   rc.setFromCamera({x:e.clientX/innerWidth*2-1,y:-(e.clientY/innerHeight)*2+1},cam);
   const h=rc.intersectObjects(hit)[0];if(!h)return;
+  if(h.object.userData.ad){openAd();return}
   if(h.object.userData.hub){if(typeof openRoomMenu==='function')openRoomMenu();return}
   if(h.object.userData.i!=null)openIsland(h.object.userData.i);
 }
@@ -897,7 +909,7 @@ function loop(t){if(document.hidden||(document.querySelector(".ov.on")&&(frameN+
       if(f.rot)f.g.rotation.y=f.rot+Math.sin(t*.3)*.15;
     }
   });
-  bridgeTick(t);
+  bridgeTick(t);adTick(t,dt);
   // 海鳥只在早上出現（遊戲時間 05:00–09:00）
   birds.forEach(b=>{
     const morning=gameH>=5&&gameH<9;
@@ -1000,6 +1012,65 @@ function loop(t){if(document.hidden||(document.querySelector(".ov.on")&&(frameN+
   setBtn();
 })();
 
+/* ---------- 廣告熱氣球（拉布條繞島巡航；點擊可看大圖） ---------- */
+const AD_IMG='ad-banner.png';  // 布條圖片：與 HTML 放同一資料夾
+const AD_URL='';               // 點開大圖後顯示「了解更多」的連結；留空則不顯示
+const AD_SPEED=2.2;            // 巡航速度（單位/秒），繞一圈約 70~80 秒
+const AD_ALT=10;               // 飛行高度
+const AD_W=12;                 // 布條寬度（高度依圖片比例自動計算）
+let adG=null,adGeo=null,adBase=null,adMats=[],adHit=[],adR=30,adA=-.8;
+const adGap=2.2,adYc=.15;
+const balTex=tex((x,w,h)=>{const cols=['#c0694a','#faf5ec','#4fb3c4','#faf5ec'],n=12;for(let k=0;k<n;k++){x.fillStyle=cols[k%4];x.fillRect(k*w/n,0,w/n+1,h)}},256,128);
+function adRod(g,a,b,r,col){const d=new THREE.Vector3().subVectors(b,a),L=d.length(),m=mk(new THREE.CylinderGeometry(r,r,L,4),col,0,0,0);
+  m.position.copy(a).add(b).multiplyScalar(.5);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());g.add(m);return m}
+function adRegHit(){adHit.forEach(m=>{if(hit.indexOf(m)<0)hit.push(m)})}
+function adFallbackTex(){return tex((x,w,h)=>{const g=x.createLinearGradient(0,0,w,0);g.addColorStop(0,'#ffd9a0');g.addColorStop(1,'#f26a1b');x.fillStyle=g;x.fillRect(0,0,w,h);
+  x.font='900 84px "Noto Sans TC",sans-serif';x.textAlign='center';x.textBaseline='middle';x.lineJoin='round';x.lineWidth=12;x.strokeStyle='#b8480f';x.strokeText('115年度高等教育深耕計畫',w/2,h/2);x.fillStyle='#fff';x.fillText('115年度高等教育深耕計畫',w/2,h/2)},1053,231)}
+function adBalloon(){
+  const g=new THREE.Group(),env=new THREE.Mesh(new THREE.SphereGeometry(1.25,24,16),new THREE.MeshLambertMaterial({map:balTex}));
+  env.scale.y=1.18;env.position.y=2.75;env.userData.ad=true;adHit.push(env);g.add(env);
+  g.add(mk(new THREE.CylinderGeometry(.46,.4,.5,12),0xf3e9d2,0,1.22,0));
+  g.add(mk(new THREE.BoxGeometry(.55,.36,.55),0x8a6a4b,0,.18,0),mk(new THREE.BoxGeometry(.64,.06,.64),0x6b5340,0,.39,0));
+  [[-.25,-.25],[.25,-.25],[-.25,.25],[.25,.25]].forEach(p=>adRod(g,new THREE.Vector3(p[0],.42,p[1]),new THREE.Vector3(p[0]*1.2,1.0,p[1]*1.2),.014,0x4a4035));
+  g.add(glow(0,2.6,0,3.4)); // 夜間燈籠光（與路燈共用 glowMat，自動隨夜晚亮起）
+  return g}
+function initAd(t){
+  if(adG)return;
+  const iw=t.image&&t.image.width,ih=t.image&&t.image.height,asp=(iw&&ih)?iw/ih:1053/231,H=AD_W/asp;
+  t.anisotropy=Math.min(8,R.capabilities.getMaxAnisotropy());
+  const t2=t.clone();t2.repeat.set(-1,1);t2.offset.set(1,0);t2.needsUpdate=true; // 背面不鏡像
+  adG=new THREE.Group();
+  const bal=adBalloon();bal.scale.setScalar(1.35);adG.add(bal);adG.userData.bal=bal;
+  const geo=new THREE.PlaneGeometry(AD_W,H,32,1);geo.translate(-adGap-AD_W/2,0,0);adGeo=geo;adBase=geo.attributes.position.array.slice();
+  const mF=new THREE.MeshBasicMaterial({map:t,side:THREE.FrontSide}),mB=new THREE.MeshBasicMaterial({map:t2,side:THREE.BackSide});adMats=[mF,mB];
+  [mF,mB].forEach(m=>{const b=new THREE.Mesh(geo,m);b.position.y=adYc;b.frustumCulled=false;b.userData.ad=true;adG.add(b);adHit.push(b)});
+  adG.add(mk(new THREE.CylinderGeometry(.05,.05,H+.2,6),0x6b5340,-adGap,adYc,0));
+  const bk=new THREE.Vector3(-.3,.55,0);
+  adRod(adG,bk,new THREE.Vector3(-adGap,adYc+H/2,0),.017,0x4a4035);
+  adRod(adG,bk,new THREE.Vector3(-adGap,adYc-H/2,0),.017,0x4a4035);
+  S.add(adG);adRegHit()}
+function setupAd(base){adR=base+5;adRegHit()} // build() 重建島嶼後呼叫：調整航道並重新登錄點擊目標
+function adTick(t,dt){
+  if(!adG)return;
+  adA+=dt*AD_SPEED*(RM?.35:1)/adR;
+  adG.position.set(Math.sin(adA)*adR,AD_ALT+(RM?0:Math.sin(t*.8)*.35),Math.cos(adA)*adR);
+  adG.rotation.y=adA; // 本地 +X = 前進方向，+Z = 朝外
+  adG.userData.bal.rotation.z=RM?0:Math.sin(t*.9)*.045;
+  if(!RM){const p=adGeo.attributes.position,b=adBase;
+    for(let k=0;k<p.count;k++){const s=Math.min(1,Math.max(0,(-adGap-b[k*3])/AD_W));p.array[k*3+1]=b[k*3+1]-s*s*.45;p.array[k*3+2]=Math.sin(s*7-t*4.5)*(.03+.3*s)}
+    p.needsUpdate=true}
+  const br=1-NK*.45;adMats.forEach(m=>m.color.setScalar(br))}
+function openAd(){const o=$('#adOv');if(o)o.classList.add('on')}
+function closeAd(){const o=$('#adOv');if(o)o.classList.remove('on')}
+(function(){
+  const img=$('#adImg');img.onerror=()=>{img.outerHTML='<h2>115年度高等教育深耕計畫</h2><p>正修科技大學</p>'};img.src=AD_IMG;
+  if(AD_URL){const a=$('#adLink');a.href=AD_URL;a.hidden=false}
+  $('#adClose').onclick=closeAd;$('#adOv').onclick=e=>{if(e.target.id==='adOv')closeAd()};
+  // file:// 直接開啟時，瀏覽器會禁止把外部圖片當 WebGL 貼圖，改用內建的文字布條避免整個畫面當掉
+  if(location.protocol==='file:')initAd(adFallbackTex());
+  else new THREE.TextureLoader().load(AD_IMG,initAd,undefined,()=>initAd(adFallbackTex()));
+})();
+
 /* ---------- 控制 ---------- */
 function hideHint(){$('#hint').classList.add('off')}
 setTimeout(hideHint,7000);
@@ -1022,7 +1093,7 @@ $('#fav').onclick=()=>openList('star');
 $('#lsc').onclick=closeList;
 $('#tab-all').onclick=()=>{tab='all';renderList()};
 $('#tab-star').onclick=()=>{tab='star';renderList()};
-addEventListener('keydown',e=>{if(e.key==='Escape'){closeList();closeQ()}});
+addEventListener('keydown',e=>{if(e.key==='Escape'){closeList();closeQ();closeAd()}});
 
 /* ---------- 答題 ---------- */
 let cur=0,qi=0;
