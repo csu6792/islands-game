@@ -1666,10 +1666,15 @@ function showCd(text,go,sub){
   clearTimeout(cdHideT);if(go)cdHideT=setTimeout(()=>{ov.hidden=true},900)}
 function hideCd(){clearTimeout(cdHideT);const o=$('#cdOv');if(o)o.hidden=true}
 function fmtTime(ms){const l=Math.max(0,ms),m=Math.floor(l/60000),s=Math.floor((l%60000)/1000);return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
-/* ---------- 競賽緊張氛圍：程式合成戰鬥音樂（不需額外檔案）、心跳、紅色暗角、GO 震動 ---------- */
+/* ---------- 競賽緊張氛圍：專屬戰鬥音樂 island_race.mp3（與 HTML 放同一資料夾）、心跳、紅色暗角、GO 震動 ---------- */
 const raceFx=(()=>{
-  let c=null,out=null,timer=null,next=0,step=0,nbeat=0,running=false,riser=null,nbuf=null;
-  const NOTES=[55,55,65.41,55,55,82.41,55,49]; // A1 A1 C2 A1 A1 E2 A1 G1：小調低音節奏
+  const RACE_FILE='island_race.mp3',RACE_VOL=.8;
+  let c=null,out=null,timer=null,next=0,nbeat=0,running=false,riser=null,nbuf=null;
+  let rm=null,rmBad=false,rmFade=null,primed=false,wantMusic=false,rate=1;
+  function getRM(){if(!rm){rm=new Audio(RACE_FILE);rm.loop=true;rm.preload='auto';rm.volume=0;rm.addEventListener('error',()=>{rmBad=true;console.warn('找不到戰鬥音樂 '+RACE_FILE)})}return rm}
+  function fadeRM(v,sec){if(!rm)return;clearInterval(rmFade);const from=rm.volume,t0=Date.now();
+    rmFade=setInterval(()=>{const k=Math.min(1,(Date.now()-t0)/(sec*1000));rm.volume=Math.max(0,Math.min(1,from+(v-from)*k));if(k>=1){clearInterval(rmFade);if(v===0)rm.pause()}},50)}
+  function playMusic(){if(rmBad||!soundOn())return;const a=getRM();rate=1;a.playbackRate=1;try{a.currentTime=0}catch(e){}a.play().catch(()=>{});fadeRM(RACE_VOL,1)}
   const soundOn=()=>!window.islandMusic||islandMusic.isOn();
   const vig=()=>$('#raceVig');
   function ctx(){if(!c){c=new (window.AudioContext||window.webkitAudioContext)();out=c.createGain();out.gain.value=.55;out.connect(c.destination);
@@ -1682,21 +1687,16 @@ const raceFx=(()=>{
   const left=()=>roomEndAt-Date.now();
   function loop(){
     if(!running||!c)return;
-    const now=c.currentTime;if(next<now)next=now+.05;if(nbeat<now)nbeat=now+.05;
-    if(!soundOn()){next=now+.1;nbeat=now+.1;return}
+    const now=c.currentTime;if(nbeat<now)nbeat=now+.05;
+    if(!soundOn()){nbeat=now+.1;return}
     if(Date.now()<roomStartAt)return; // 倒數階段只有上升音
-    while(next<now+.25){
-      const l=left(),bpm=l<10000?172:l<30000?144:120,e=30/bpm; // 越接近結束越快
-      bass(next,NOTES[step%8],e*.9);
-      if(step%2===0)thump(next,105,.28,.18);else hat(next);
-      step++;next+=e}
     while(nbeat<now+.25){ // 最後 30 秒：心跳「咚咚」
       const l=left();if(l>30000){nbeat=now+.25;break}
       thump(nbeat,72,.95);thump(nbeat+.17,62,.65);nbeat+=l<10000?.5:.85}
   }
   return{
     start(){
-      if(running)return;running=true;step=0;next=0;nbeat=0;
+      if(running)return;running=true;next=0;nbeat=0;wantMusic=true;
       try{ctx();window.islandMusic&&islandMusic.duck();
         const d=(roomStartAt-Date.now())/1000;
         if(d>.4&&soundOn()){ // 倒數時的上升緊張音
@@ -1705,19 +1705,29 @@ const raceFx=(()=>{
           fl.type='lowpass';fl.frequency.setValueAtTime(200,t);fl.frequency.exponentialRampToValueAtTime(2200,t+d);
           g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.3,t+d);g.gain.linearRampToValueAtTime(0,t+d+.05);
           o.connect(fl);fl.connect(g);g.connect(out);o.start(t);o.stop(t+d+.1);riser=o}
+        if(Date.now()>=roomStartAt)playMusic(); // 中途加入：直接開始播
         timer=setInterval(loop,80)}catch(e){running=false}
     },
     go(){ // GO!：低音重擊 + 畫面震動
       try{if(c&&soundOn()){thump(c.currentTime,140,1,.5)}}catch(e){}
+      playMusic();
       const cv=$('#c');if(cv){cv.classList.remove('shake');void cv.offsetWidth;cv.classList.add('shake')}
     },
     tick(l){ // 每 100ms 更新暗角：最後 30 秒泛紅、最後 10 秒急促閃爍
+      if(wantMusic&&rm&&!rmBad){ // 越接近結束播放越快；音樂開關即時生效
+        if(!soundOn()){if(!rm.paused)rm.pause()}
+        else if(Date.now()>=roomStartAt){
+          if(rm.paused){rm.play().catch(()=>{});fadeRM(RACE_VOL,.6)}
+          const r=l<=10000?1.12:l<=30000?1.06:1;if(r!==rate){rate=r;rm.playbackRate=r}}}
       const v=vig();if(!v)return;
       v.classList.toggle('warn',l>0&&l<=30000&&l>10000);
       v.classList.toggle('hot',l>0&&l<=10000);
     },
+    prime(){ // 手機需先有一次點擊才允許自動播放：先靜音播一下解鎖
+      if(primed||rmBad)return;primed=true;const a=getRM();a.muted=true;
+      a.play().then(()=>{a.pause();a.currentTime=0;a.muted=false}).catch(()=>{primed=false;a.muted=false})},
     stop(natural){
-      const was=running;running=false;clearInterval(timer);timer=null;
+      const was=running;running=false;wantMusic=false;clearInterval(timer);timer=null;fadeRM(0,natural?1.2:.4);
       try{if(riser){riser.stop();riser=null}}catch(e){}
       const v=vig();if(v)v.classList.remove('warn','hot');
       if(was){
@@ -1725,6 +1735,7 @@ const raceFx=(()=>{
         window.islandMusic&&islandMusic.restore()}
     }};
 })();
+addEventListener('pointerdown',()=>raceFx.prime(),true);
 function onRaceStart(){
   hideRoomOvs();closeQ();
   $('#raceHud').hidden=false;
