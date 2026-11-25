@@ -318,6 +318,8 @@ textarea{height:110px;resize:vertical}
     <button type="button" data-sec="300">5 分</button>
     <button type="button" data-sec="600">10 分</button>
   </div>
+  <p style="font-size:14px;margin:10px 0 4px;font-weight:700">老師密碼</p>
+  <input type="password" id="rcPwd" autocomplete="off" placeholder="請輸入密碼" style="width:100%;font:inherit;font-size:16px;padding:10px 14px;border-radius:14px;border:2px solid var(--line);background:transparent;color:var(--ink);margin-bottom:8px">
   <div class="msg" id="rcMsg"></div>
   <div class="row" style="justify-content:center">
     <button class="btn" id="rcGo">建立並產生代碼</button>
@@ -1481,7 +1483,7 @@ function openRoomMenu(){
 function hideRoomOvs(){['roomMenu','roomCreate','roomJoin','roomLobby','roomRank'].forEach(id=>$('#'+id).classList.remove('on'))}
 
 $('#rmClose').onclick=()=>hideRoomOvs();
-$('#rmCreate').onclick=()=>{hideRoomOvs();$('#roomCreate').classList.add('on');$('#rcMsg').textContent=''};
+$('#rmCreate').onclick=()=>{hideRoomOvs();$('#roomCreate').classList.add('on');$('#rcMsg').textContent='';$('#rcPwd').value=''};
 $('#rmJoin').onclick=()=>{hideRoomOvs();$('#roomJoin').classList.add('on');$('#rjMsg').textContent='';$('#rjCode').value=''};
 $('#rcBack').onclick=()=>{hideRoomOvs();$('#roomMenu').classList.add('on')};
 $('#rjBack').onclick=()=>{hideRoomOvs();$('#roomMenu').classList.add('on')};
@@ -1492,7 +1494,10 @@ $('#durTabs').onclick=e=>{
   $('#durTabs').querySelectorAll('button').forEach(x=>x.setAttribute('aria-selected',x===b?'true':'false'));
 };
 
+const ROOM_PWD='csu'; // 建立房間密碼（不分大小寫）
+$('#rcPwd').addEventListener('keydown',e=>{if(e.key==='Enter')$('#rcGo').click()});
 $('#rcGo').onclick=()=>{
+  if($('#rcPwd').value.trim().toLowerCase()!==ROOM_PWD){$('#rcMsg').textContent='🔒 密碼錯誤，只有老師可以建立房間';$('#rcPwd').value='';$('#rcPwd').focus();return}
   if(!mqttClient?.connected){$('#rcMsg').textContent='尚未連線';return}
   roomCode=genRoomCode();roomHost=true;roomStatus='lobby';
   raceScore=0;raceScoreAt=0;raceDone={};raceQ={};raceIslandPts={};racePlayers.clear();
