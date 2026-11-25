@@ -164,6 +164,12 @@ textarea{height:110px;resize:vertical}
 @keyframes slin{from{transform:translateX(30px);opacity:0}}
 .opt.ok{animation:bn .4s}
 @keyframes bn{40%{transform:scale(1.04)}}
+#raceVig{position:fixed;inset:0;z-index:4;pointer-events:none;opacity:0;transition:opacity 1s;background:radial-gradient(ellipse at center,transparent 45%,rgba(200,25,25,.55) 100%)}
+#raceVig.warn{animation:vg 1.2s ease-in-out infinite alternate}
+#raceVig.hot{animation:vg .42s ease-in-out infinite alternate;background:radial-gradient(ellipse at center,transparent 30%,rgba(230,20,20,.7) 100%)}
+@keyframes vg{from{opacity:.25}to{opacity:1}}
+#c.shake{animation:shk .5s}
+@keyframes shk{0%,100%{translate:0 0}15%{translate:-9px 5px}30%{translate:8px -6px}45%{translate:-6px -4px}60%{translate:5px 5px}80%{translate:-3px 2px}}
 #raceHud.hot{color:var(--bad);animation:hp .5s infinite alternate}
 @keyframes hp{to{transform:translateX(-50%) scale(1.12)}}
 .pl.done{animation:dn .8s 2}
@@ -295,6 +301,7 @@ textarea{height:110px;resize:vertical}
 </div>
 
 <div id="raceBoard" hidden></div>
+<div id="raceVig"></div>
 <div id="cdOv" hidden aria-live="assertive"><div id="cdNum"></div><div id="cdSub"></div></div>
 <div id="starToast" role="status" aria-live="polite"></div>
 
@@ -1016,6 +1023,10 @@ function loop(t){if(document.hidden||(document.querySelector(".ov.on")&&(frameN+
     if(musicOn){if(!started)boot();else{resumeAll();fadeMaster(VOL,1.2)}}
     else if(started){fadeMaster(0,.5);setTimeout(()=>{if(!musicOn)pauseAll()},700)}};
   document.addEventListener('visibilitychange',()=>{if(!started)return;if(document.hidden)pauseAll();else if(musicOn)resumeAll()});
+  window.islandMusic={ // 競賽時讓島上音樂淡出，賽後再淡回來
+    isOn:()=>musicOn,
+    duck(){if(started&&musicOn)fadeMaster(0,1.2)},
+    restore(){if(started&&musicOn)fadeMaster(VOL,2.5)}};
   setBtn();
 })();
 
@@ -1644,7 +1655,7 @@ $('#rlLeave').onclick=()=>{
     mqttClient.publish(scoreTopic(myId),JSON.stringify({id:myId,offline:true}),{qos:0,retain:true});
     if(roomHost)mqttClient.publish(roomTopic(),JSON.stringify({code:roomCode,status:'ended',ts:Date.now()}),{qos:0,retain:true});
   }
-  stopRaceTimer();roomStatus='none';roomCode='';roomHost=false;
+  stopRaceTimer();raceFx.stop(false);roomStatus='none';roomCode='';roomHost=false;
   $('#raceHud').hidden=true;$('#raceBoard').hidden=true;hideCd();hideRoomOvs();
 };
 
@@ -1655,12 +1666,71 @@ function showCd(text,go,sub){
   clearTimeout(cdHideT);if(go)cdHideT=setTimeout(()=>{ov.hidden=true},900)}
 function hideCd(){clearTimeout(cdHideT);const o=$('#cdOv');if(o)o.hidden=true}
 function fmtTime(ms){const l=Math.max(0,ms),m=Math.floor(l/60000),s=Math.floor((l%60000)/1000);return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')}
+/* ---------- 競賽緊張氛圍：程式合成戰鬥音樂（不需額外檔案）、心跳、紅色暗角、GO 震動 ---------- */
+const raceFx=(()=>{
+  let c=null,out=null,timer=null,next=0,step=0,nbeat=0,running=false,riser=null,nbuf=null;
+  const NOTES=[55,55,65.41,55,55,82.41,55,49]; // A1 A1 C2 A1 A1 E2 A1 G1：小調低音節奏
+  const soundOn=()=>!window.islandMusic||islandMusic.isOn();
+  const vig=()=>$('#raceVig');
+  function ctx(){if(!c){c=new (window.AudioContext||window.webkitAudioContext)();out=c.createGain();out.gain.value=.55;out.connect(c.destination);
+      nbuf=c.createBuffer(1,c.sampleRate*.06,c.sampleRate);const d=nbuf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1}
+    if(c.state==='suspended')c.resume();return c}
+  function env(g,t,a,peak,d){g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(.0001,t+d)}
+  function bass(t,f,len){const o=c.createOscillator(),fl=c.createBiquadFilter(),g=c.createGain();o.type='sawtooth';o.frequency.value=f;fl.type='lowpass';fl.frequency.value=420;env(g,t,.01,.45,len);o.connect(fl);fl.connect(g);g.connect(out);o.start(t);o.stop(t+len+.03)}
+  function thump(t,f0,peak,dur){const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(38,t+.16);env(g,t,.005,peak,dur||.24);o.connect(g);g.connect(out);o.start(t);o.stop(t+(dur||.24)+.03)}
+  function hat(t){const s=c.createBufferSource(),fl=c.createBiquadFilter(),g=c.createGain();s.buffer=nbuf;fl.type='highpass';fl.frequency.value=7000;env(g,t,.002,.12,.05);s.connect(fl);fl.connect(g);g.connect(out);s.start(t)}
+  const left=()=>roomEndAt-Date.now();
+  function loop(){
+    if(!running||!c)return;
+    const now=c.currentTime;if(next<now)next=now+.05;if(nbeat<now)nbeat=now+.05;
+    if(!soundOn()){next=now+.1;nbeat=now+.1;return}
+    if(Date.now()<roomStartAt)return; // 倒數階段只有上升音
+    while(next<now+.25){
+      const l=left(),bpm=l<10000?172:l<30000?144:120,e=30/bpm; // 越接近結束越快
+      bass(next,NOTES[step%8],e*.9);
+      if(step%2===0)thump(next,105,.28,.18);else hat(next);
+      step++;next+=e}
+    while(nbeat<now+.25){ // 最後 30 秒：心跳「咚咚」
+      const l=left();if(l>30000){nbeat=now+.25;break}
+      thump(nbeat,72,.95);thump(nbeat+.17,62,.65);nbeat+=l<10000?.5:.85}
+  }
+  return{
+    start(){
+      if(running)return;running=true;step=0;next=0;nbeat=0;
+      try{ctx();window.islandMusic&&islandMusic.duck();
+        const d=(roomStartAt-Date.now())/1000;
+        if(d>.4&&soundOn()){ // 倒數時的上升緊張音
+          const t=c.currentTime,o=c.createOscillator(),fl=c.createBiquadFilter(),g=c.createGain();
+          o.type='sawtooth';o.frequency.setValueAtTime(60,t);o.frequency.exponentialRampToValueAtTime(320,t+d);
+          fl.type='lowpass';fl.frequency.setValueAtTime(200,t);fl.frequency.exponentialRampToValueAtTime(2200,t+d);
+          g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.3,t+d);g.gain.linearRampToValueAtTime(0,t+d+.05);
+          o.connect(fl);fl.connect(g);g.connect(out);o.start(t);o.stop(t+d+.1);riser=o}
+        timer=setInterval(loop,80)}catch(e){running=false}
+    },
+    go(){ // GO!：低音重擊 + 畫面震動
+      try{if(c&&soundOn()){thump(c.currentTime,140,1,.5)}}catch(e){}
+      const cv=$('#c');if(cv){cv.classList.remove('shake');void cv.offsetWidth;cv.classList.add('shake')}
+    },
+    tick(l){ // 每 100ms 更新暗角：最後 30 秒泛紅、最後 10 秒急促閃爍
+      const v=vig();if(!v)return;
+      v.classList.toggle('warn',l>0&&l<=30000&&l>10000);
+      v.classList.toggle('hot',l>0&&l<=10000);
+    },
+    stop(natural){
+      const was=running;running=false;clearInterval(timer);timer=null;
+      try{if(riser){riser.stop();riser=null}}catch(e){}
+      const v=vig();if(v)v.classList.remove('warn','hot');
+      if(was){
+        try{if(natural&&c&&soundOn()){const t=c.currentTime;thump(t,90,1,.9);bass(t,41.2,1.2)}}catch(e){} // 結束低音
+        window.islandMusic&&islandMusic.restore()}
+    }};
+})();
 function onRaceStart(){
   hideRoomOvs();closeQ();
   $('#raceHud').hidden=false;
   $('#raceScore').textContent=raceScore;
   cdLast=-1;cdDone=Date.now()>=roomStartAt; // 中途加入的人不再倒數
-  stopRaceTimer();
+  stopRaceTimer();raceFx.start();
   raceTimer=setInterval(tickRace,100);
   tickRace();
   if(cdDone){boom(10);renderBoard()}
@@ -1674,9 +1744,9 @@ function tickRace(){
     $('#raceBoard').hidden=true;
     if(sec!==cdLast){cdLast=sec;showCd(String(sec),false,'準備好！題目馬上開放');beep(660,.18)}
     return}
-  if(!cdDone){cdDone=true;showCd('GO!',true);beep(1175,.5);boom(14);if(typeof bubbleCheer==='function')bubbleCheer('出發！');renderBoard()}
+  if(!cdDone){cdDone=true;showCd('GO!',true);beep(1175,.5);raceFx.go();boom(14);if(typeof bubbleCheer==='function')bubbleCheer('出發！');renderBoard()}
   const left=Math.max(0,roomEndAt-now);
-  $('#raceTime').textContent=fmtTime(left);
+  $('#raceTime').textContent=fmtTime(left);raceFx.tick(left);
   $('#raceHud').classList.toggle('hot',left>0&&left<10000);
   const sec=Math.ceil(left/1000);if(left>0&&left<=10000&&sec!==_lb){_lb=sec;beep()}
   if(left<=0){
@@ -1727,7 +1797,7 @@ function raceOnIslandDone(islandIdx){
 
 function onRaceEnd(){
   if(roomStatus==='ended'&&$('#roomRank').classList.contains('on'))return;
-  roomStatus='ended';stopRaceTimer();$('#raceHud').hidden=true;$('#raceBoard').hidden=true;hideCd();boardPrev.clear();closeQ();
+  roomStatus='ended';stopRaceTimer();raceFx.stop(true);$('#raceHud').hidden=true;$('#raceBoard').hidden=true;hideCd();boardPrev.clear();closeQ();
   // 排名（排除房主）
   const rankCmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt|0,tb=b.scoreAt|0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
   const ranked=[...racePlayers.values()].filter(p=>!p.isHost).sort(rankCmp);
