@@ -106,9 +106,19 @@ button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px soli
 .btn{font:inherit;font-weight:900;font-size:16px;border:0;border-radius:999px;padding:11px 20px;background:var(--brand);color:var(--on-brand);box-shadow:0 3px 0 rgba(0,0,0,.18)}
 .btn.alt{background:transparent;color:var(--ink);border:2px solid var(--ink);box-shadow:none;padding:9px 18px}
 .btn:disabled{opacity:.5}
-a.btn{text-decoration:none;display:inline-block}
-#adOv .card{padding:14px}
-#adOv img{width:100%;display:block;border-radius:16px}
+/* 廣告卷軸：不加遮罩、只有卷軸本體可點，點一下收起 */
+#adScroll{position:fixed;left:0;top:0;z-index:5;display:none;pointer-events:none;filter:drop-shadow(0 3px 6px rgba(60,40,20,.28))}
+#adScroll.show{display:block}
+#adScroll .sc{position:relative;display:flex;align-items:center;width:32px;pointer-events:auto;cursor:pointer;transition:width .9s cubic-bezier(.3,.8,.3,1);outline-offset:6px}
+#adScroll.open .sc{width:var(--sw)}
+#adScroll .rod{flex:none;width:16px;height:calc(var(--ph) + 14px);border-radius:999px;background:linear-gradient(90deg,#c1a07e,#8a6a4b 48%,#5f4a38);box-shadow:inset 0 0 0 1px rgba(0,0,0,.14);z-index:1}
+#adScroll .paper{position:relative;flex:1;min-width:0;height:var(--ph);overflow:hidden;background:var(--panel);border-top:2px solid var(--line);border-bottom:2px solid var(--line)}
+#adScroll .paper img{display:block;width:var(--pw);height:100%;max-width:none;-webkit-user-drag:none;user-select:none}
+#adScroll .paper::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,rgba(60,40,20,.22),transparent 7%,transparent 93%,rgba(60,40,20,.22))}
+#adScroll .x{position:absolute;top:-14px;right:-6px;width:24px;height:24px;border-radius:50%;background:var(--panel);color:var(--ink);box-shadow:var(--shadow);display:grid;place-items:center;font-size:12px;font-weight:900;opacity:0;transition:opacity .3s .7s;z-index:2}
+#adScroll.open .x{opacity:1}
+@media (prefers-reduced-motion:no-preference){#adScroll.open{animation:adFloat 6s ease-in-out infinite}}
+@keyframes adFloat{50%{transform:translateY(3px)}}
 .opt{display:flex;gap:12px;align-items:center;width:100%;text-align:left;font-size:18px;font-weight:700;margin:8px 0;padding:12px 14px;border-radius:18px;border:2.5px solid var(--line);background:transparent;color:var(--ink)}
 .opt .k{flex:none;width:30px;height:30px;border-radius:10px;background:var(--line);display:grid;place-items:center;font-family:var(--f-latin);font-size:15px}
 .opt.ok{background:var(--ok);border-color:var(--ok);color:#fff}
@@ -255,12 +265,8 @@ textarea{height:110px;resize:vertical}
   <button class="btn" id="wc">繼續探險</button>
 </div></div>
 
-<div class="ov" id="adOv"><div class="card" style="text-align:center">
-  <img id="adImg" alt="115年度高等教育深耕計畫">
-  <div class="row" style="justify-content:center">
-    <a class="btn" id="adLink" hidden target="_blank" rel="noopener">了解更多</a>
-    <button class="btn alt" id="adClose">關閉</button>
-  </div>
+<div id="adScroll"><div class="sc" id="adSc" role="button" tabindex="0" title="點一下收起" aria-label="活動廣告，點一下收起">
+  <span class="rod"></span><span class="paper"><img id="adImg" alt="115年度高等教育深耕計畫" draggable="false"></span><span class="rod"></span><span class="x" aria-hidden="true">✕</span>
 </div></div>
 
 <div class="ov on" id="login"><div class="card">
@@ -878,7 +884,7 @@ const rc=new THREE.Raycaster(),V=new THREE.Vector3();
 function pick(e){
   rc.setFromCamera({x:e.clientX/innerWidth*2-1,y:-(e.clientY/innerHeight)*2+1},cam);
   const h=rc.intersectObjects(hit)[0];if(!h)return;
-  if(h.object.userData.ad){openAd();return}
+  if(h.object.userData.ad){toggleAd();return}
   if(h.object.userData.hub){if(typeof openRoomMenu==='function')openRoomMenu();return}
   if(h.object.userData.i!=null)openIsland(h.object.userData.i);
 }
@@ -1014,7 +1020,6 @@ function loop(t){if(document.hidden||(document.querySelector(".ov.on")&&(frameN+
 
 /* ---------- 廣告熱氣球（拉布條繞島巡航；點擊可看大圖） ---------- */
 const AD_IMG='ad-banner.png';  // 布條圖片：與 HTML 放同一資料夾
-const AD_URL='';               // 點開大圖後顯示「了解更多」的連結；留空則不顯示
 const AD_SPEED=2.2;            // 巡航速度（單位/秒），繞一圈約 70~80 秒
 const AD_ALT=10;               // 飛行高度
 const AD_W=12;                 // 布條寬度（高度依圖片比例自動計算）
@@ -1060,12 +1065,27 @@ function adTick(t,dt){
     for(let k=0;k<p.count;k++){const s=Math.min(1,Math.max(0,(-adGap-b[k*3])/AD_W));p.array[k*3+1]=b[k*3+1]-s*s*.45;p.array[k*3+2]=Math.sin(s*7-t*4.5)*(.03+.3*s)}
     p.needsUpdate=true}
   const br=1-NK*.45;adMats.forEach(m=>m.color.setScalar(br))}
-function openAd(){const o=$('#adOv');if(o)o.classList.add('on')}
-function closeAd(){const o=$('#adOv');if(o)o.classList.remove('on')}
+let adOpen=false,adAsp=1053/231,adHideT=null;
+// 卷軸位置：優先放在標題卡（知識島探險家 ISLAND QUEST）右側、清單鈕左側；空間不夠（手機）時改放在標題區正下方
+function adLayout(){
+  const sc=$('#adScroll'),bd=document.querySelector('.brand'),pl=$('#lbtn'),fv=$('#fav');if(!sc||!bd)return;
+  const br=bd.getBoundingClientRect(),pr=pl.getBoundingClientRect(),fr=fv.getBoundingClientRect(),gap=12;
+  let left=br.right+gap,top=br.top,W=Math.min(520,pr.left-gap-left);
+  if(W<300){left=br.left;top=fr.bottom+10;W=Math.min(440,innerWidth-left*2)}
+  const pw=W-32,ph=pw/adAsp;
+  sc.style.left=left+'px';sc.style.top=top+'px';
+  sc.style.setProperty('--sw',W+'px');sc.style.setProperty('--pw',pw+'px');sc.style.setProperty('--ph',ph+'px')}
+function showAd(){const sc=$('#adScroll');clearTimeout(adHideT);adLayout();sc.classList.add('show');void sc.offsetWidth;sc.classList.add('open');adOpen=true}
+function closeAd(){if(!adOpen)return;const sc=$('#adScroll');sc.classList.remove('open');adOpen=false;clearTimeout(adHideT);adHideT=setTimeout(()=>sc.classList.remove('show'),950)}
+function toggleAd(){adOpen?closeAd():showAd()}
 (function(){
-  const img=$('#adImg');img.onerror=()=>{img.outerHTML='<h2>115年度高等教育深耕計畫</h2><p>正修科技大學</p>'};img.src=AD_IMG;
-  if(AD_URL){const a=$('#adLink');a.href=AD_URL;a.hidden=false}
-  $('#adClose').onclick=closeAd;$('#adOv').onclick=e=>{if(e.target.id==='adOv')closeAd()};
+  const img=$('#adImg'),sc=$('#adSc');
+  img.onload=()=>{if(img.naturalWidth&&img.naturalHeight){adAsp=img.naturalWidth/img.naturalHeight;if(adOpen)adLayout()}};
+  img.onerror=()=>{img.onerror=null;img.src=adFallbackTex().image.toDataURL()};
+  img.src=AD_IMG;
+  sc.onclick=closeAd;
+  sc.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();closeAd()}};
+  addEventListener('resize',()=>{if(adOpen)adLayout()});
   // file:// 直接開啟時，瀏覽器會禁止把外部圖片當 WebGL 貼圖，改用內建的文字布條避免整個畫面當掉
   if(location.protocol==='file:')initAd(adFallbackTex());
   else new THREE.TextureLoader().load(AD_IMG,initAd,undefined,()=>initAd(adFallbackTex()));
@@ -1093,7 +1113,7 @@ $('#fav').onclick=()=>openList('star');
 $('#lsc').onclick=closeList;
 $('#tab-all').onclick=()=>{tab='all';renderList()};
 $('#tab-star').onclick=()=>{tab='star';renderList()};
-addEventListener('keydown',e=>{if(e.key==='Escape'){closeList();closeQ();closeAd()}});
+addEventListener('keydown',e=>{if(e.key==='Escape'){closeList();closeQ()}});
 
 /* ---------- 答題 ---------- */
 let cur=0,qi=0;
