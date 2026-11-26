@@ -1131,7 +1131,7 @@ addEventListener('keydown',e=>{if(e.key==='Escape'){closeList();closeQ()}});
 
 /* ---------- 答題 ---------- */
 let cur=0,qi=0;
-function raceRunning(){return typeof roomStatus!=='undefined'&&roomStatus==='running'&&Date.now()>=roomStartAt} // 倒數期間尚未開放
+function raceRunning(){return typeof roomStatus!=='undefined'&&roomStatus==='running'&&srvNow()>=roomStartAt} // 倒數期間尚未開放
 function openIsland(i){if(items[i])items[i].bn=1;cur=i;closeList();
   if(!raceRunning()){ // 非競賽模式：不顯示題目，避免賽前先看到題目
     qi=-2;$('#qo').classList.add('on');renderQ();if(typeof mpVisit==='function')mpVisit(i);return}
@@ -1364,6 +1364,10 @@ function publishPresence(){
   mqttClient.publish(MP_TOPIC+'/'+myId,payload,{qos:0,retain:true});
 }
 
+// 多人同時進出時合併更新名單，避免手機卡頓
+let onlineTimer=null;
+function scheduleOnlineList(){if(!onlineTimer)onlineTimer=setTimeout(()=>{onlineTimer=null;updateOnlineList()},300)}
+
 function mpVisit(i){
   myIsland=(i===undefined||i===null)?-1:i;
   ensurePeerAvatar(myId,myName,myColor,myIsland);
@@ -1372,16 +1376,18 @@ function mpVisit(i){
 }
 
 function handlePeerMsg(topic,payload){
+  if(!topic.startsWith(MP_TOPIC+'/'))return; // 只處理上線名單，房間分數不可當成玩家位置
   try{
+    if(!payload.length){const id=topic.slice(MP_TOPIC.length+1);if(peers.delete(id)){removePeerAvatar(id);scheduleOnlineList()}return}
     const data=JSON.parse(payload.toString());
     if(!data||!data.id||data.id===myId)return;
     if(data.offline){
-      peers.delete(data.id);removePeerAvatar(data.id);updateOnlineList();return;
+      if(peers.delete(data.id)){removePeerAvatar(data.id);scheduleOnlineList()}return;
     }
     const isl=(typeof data.island==='number')?data.island:-1;
     peers.set(data.id,{name:data.name||'探險家',color:data.color|0,island:isl,last:Date.now()});
     ensurePeerAvatar(data.id,data.name,data.color|0,isl);
-    updateOnlineList();
+    scheduleOnlineList();
   }catch(e){}
 }
 
@@ -1394,8 +1400,8 @@ function connectMqtt(){
       clean:true,
       keepalive:30,
       reconnectPeriod:3000,
-      connectTimeout:10000,
-      will:{topic:MP_TOPIC+'/'+myId,payload:JSON.stringify({id:myId,offline:true}),qos:0,retain:true}
+      connectTimeout:30000,
+      will:{topic:MP_TOPIC+'/'+myId,payload:'',qos:0,retain:true}
     });
   }catch(e){lm.textContent='連線失敗，請重新整理';return}
 
@@ -1403,9 +1409,9 @@ function connectMqtt(){
     lm.textContent='已連線！';
     mqttClient.subscribe(MP_TOPIC+'/#',{qos:0});
     mqttClient.subscribe(EVENT_TOPIC,{qos:0});
-    myIsland=-1;
-    ensurePeerAvatar(myId,myName,myColor,-1);
+    ensurePeerAvatar(myId,myName,myColor,myIsland);
     publishPresence();
+    if(roomCode&&(roomStatus==='lobby'||roomStatus==='running'))publishRaceScore(); // 斷線重連後補送分數
     $('#login').classList.remove('on');
     $('#online').hidden=false;
     updateOnlineList();
@@ -1440,12 +1446,13 @@ function connectMqtt(){
   };
   setInterval(()=>{
     const now=Date.now();
-    peers.forEach((p,id)=>{if(now-p.last>45000){peers.delete(id);removePeerAvatar(id)}});
-    if(peers.size)updateOnlineList();
-  },200);
+    peers.forEach((p,id)=>{if(now-p.last>70000){peers.delete(id);removePeerAvatar(id);scheduleOnlineList()}});
+  },5000);
+  setInterval(publishPresence,20000); // 定時回報在線
 })();
 
 $('#join').onclick=()=>{
+  if(mqttClient)return; // 避免連點產生多條連線
   const n=$('#nick').value.trim();
   if(!getLessonQuery()&&!pickedLessonKey&&lessonCatalog.length>1){
     $('#lm').textContent='請先點選一個探險主題';return;
@@ -1454,7 +1461,9 @@ $('#join').onclick=()=>{
   if(n.length>12){$('#lm').textContent='暱稱最多 12 字';return}
   myName=n;myId=randId();myColor=hashColor(n+myId);
   try{localStorage.setItem('isl_nick',n)}catch(e){}
+  $('#join').disabled=true;
   connectMqtt();
+  if(!mqttClient)$('#join').disabled=false;
 };
 $('#nick').addEventListener('keydown',e=>{if(e.key==='Enter')$('#join').click()});
 try{const nn=localStorage.getItem('isl_nick');if(nn)$('#nick').value=nn}catch(e){}
@@ -1476,6 +1485,19 @@ let roomCode='',roomHost=false,roomStatus='none'; // none|lobby|running|ended
 let roomDuration=180,roomStartAt=0,roomEndAt=0;
 let raceScore=0,raceScoreAt=0,raceDone={},raceQ={},raceIslandPts={},racePlayers=new Map(); // id->{name,score,scoreAt,isHost}
 let raceTimer=null,roomSubbed='';
+/* ---------- 校時：一律以房主裝置的時間為準（學生裝置時鐘不準也沒關係） ---------- */
+let clockOffset=0,clockSamples=[],hostTick=null;
+function srvNow(){return Date.now()+(roomHost?0:clockOffset)}
+function resetClock(){clockOffset=0;clockSamples=[]}
+function addClockSample(hostNow){ // 網路延遲只會讓差值偏小，取最近幾筆的最大值最接近真實
+  clockSamples.push(hostNow-Date.now());if(clockSamples.length>10)clockSamples.shift();
+  clockOffset=Math.max(...clockSamples)}
+function roomState(status){return{code:roomCode,hostId:myId,hostName:myName,status,durationSec:roomDuration,startAt:roomStartAt,endAt:roomEndAt,ts:Date.now()}}
+// 房主每秒送出心跳（含目前狀態與房主時間），漏收開始訊息的人也能在 1 秒內跟上
+function startHostTick(){stopHostTick();hostTick=setInterval(()=>{
+  if(!roomHost||(roomStatus!=='lobby'&&roomStatus!=='running')){stopHostTick();return}
+  if(mqttClient?.connected)mqttClient.publish(roomTopic()+'/tick',JSON.stringify(roomState(roomStatus)),{qos:0,retain:false})},1000)}
+function stopHostTick(){if(hostTick){clearInterval(hostTick);hostTick=null}}
 
 function genRoomCode(){
   const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -1512,10 +1534,11 @@ $('#rcGo').onclick=()=>{
   if(!mqttClient?.connected){$('#rcMsg').textContent='尚未連線';return}
   roomCode=genRoomCode();roomHost=true;roomStatus='lobby';
   raceScore=0;raceScoreAt=0;raceDone={};raceQ={};raceIslandPts={};racePlayers.clear();
-  const state={code:roomCode,hostId:myId,hostName:myName,status:'lobby',durationSec:roomDuration,startAt:0,endAt:0,ts:Date.now()};
-  mqttClient.publish(roomTopic(),JSON.stringify(state),{qos:0,retain:true});
-  publishRaceScore();
+  resetClock();roomStartAt=0;roomEndAt=0;
   subRoom();
+  mqttClient.publish(roomTopic(),JSON.stringify(roomState('lobby')),{qos:1,retain:true});
+  publishRaceScore();
+  startHostTick();
   hideRoomOvs();showRoomLobby();
 };
 
@@ -1525,23 +1548,24 @@ $('#rjGo').onclick=()=>{
   if(!mqttClient?.connected){$('#rjMsg').textContent='尚未連線';return}
   roomCode=code;roomHost=false;roomStatus='joining';
   raceScore=0;raceScoreAt=0;raceDone={};raceQ={};raceIslandPts={};racePlayers.clear();
-  let gotState=false;
-  const once=()=>{gotState=true};
-  const prev=handleRoomMsg;
-  // 短暫標記：收到此房 state 即成功
+  resetClock();stopHostTick();
   subRoom();
   $('#rjMsg').textContent='加入中…';
+  $('#rjGo').disabled=true;
   const t0=Date.now();
-  const wait=setInterval(()=>{
+  clearInterval(joinWait);
+  joinWait=setInterval(()=>{
     if(roomStatus==='lobby'||roomStatus==='running'){
-      clearInterval(wait);publishRaceScore();hideRoomOvs();showRoomLobby();
-      if(roomStatus==='running')onRaceStart();
-    }else if(Date.now()-t0>2500){
-      clearInterval(wait);roomStatus='none';roomCode='';
-      $('#rjMsg').textContent='找不到房間或已結束，請確認代碼';
+      clearInterval(joinWait);$('#rjGo').disabled=false;publishRaceScore();
+      if(roomStatus==='lobby'){hideRoomOvs();showRoomLobby()} // 競賽中的畫面已由 onRaceStart 處理
+    }else if(Date.now()-t0>8000){
+      clearInterval(joinWait);$('#rjGo').disabled=false;roomStatus='none';roomCode='';
+      $('#rjMsg').textContent='找不到房間或已結束，請確認代碼，並確認老師的畫面開著';
     }
   },200);
 };
+let joinWait=null;
+$('#rjBack').addEventListener('click',()=>{if(roomStatus!=='joining')return;clearInterval(joinWait);$('#rjGo').disabled=false;roomStatus='none';roomCode=''});
 
 function subRoom(){
   if(!mqttClient||!roomCode)return;
@@ -1550,14 +1574,13 @@ function subRoom(){
     try{mqttClient.unsubscribe(ROOM_ROOT+'/'+roomSubbed)}catch(e){}
   }
   roomSubbed=roomCode;
-  mqttClient.subscribe(ROOM_ROOT+'/'+roomCode,{qos:0});
-  mqttClient.subscribe(ROOM_ROOT+'/'+roomCode+'/#',{qos:0});
+  mqttClient.subscribe(ROOM_ROOT+'/'+roomCode+'/#',{qos:1}); // '/#' 已包含房間主題本身
 }
 
 function publishRaceScore(){
   if(!mqttClient?.connected||!roomCode)return;
   const payload=JSON.stringify({id:myId,name:myName,score:raceScore,scoreAt:raceScoreAt||0,done:Object.keys(raceDone).map(Number),isHost:roomHost,ts:Date.now()});
-  mqttClient.publish(scoreTopic(myId),payload,{qos:0,retain:true});
+  mqttClient.publish(scoreTopic(myId),payload,{qos:1,retain:true});
   racePlayers.set(myId,{name:myName,score:raceScore,scoreAt:raceScoreAt||0,isHost:roomHost});
   renderLobbyPlayers();
   $('#raceScore').textContent=raceScore;
@@ -1569,26 +1592,32 @@ function handleRoomMsg(topic,payload){
   if(topic!==base&&!topic.startsWith(base+'/'))return;
   try{
     const data=JSON.parse(payload.toString());
-    if(topic===base){
+    if(topic===base||topic===base+'/tick'){
+      const isTick=topic!==base;
+      if(isTick&&!roomHost&&data.ts)addClockSample(data.ts); // 只有即時心跳能用來校時
       if(data.status==='lobby'){
+        if(roomStatus==='running'||roomStatus==='ended')return; // 狀態只會往前走
         roomStatus='lobby';roomDuration=data.durationSec||roomDuration;
         roomHost=data.hostId===myId;
         renderLobbyInfo(data);
       }else if(data.status==='running'){
+        if(roomStatus==='ended')return;
+        // 還沒校時前不開始，等下一個心跳（最多約 1 秒）
+        if(data.hostId!==myId&&!clockSamples.length)return;
         const wasRunning=roomStatus==='running';
         roomStatus='running';roomStartAt=data.startAt;roomEndAt=data.endAt;roomDuration=data.durationSec||roomDuration;
         roomHost=data.hostId===myId;
         renderLobbyInfo(data);
         if(!wasRunning)onRaceStart();
       }else if(data.status==='ended'){
-        roomStatus='ended';onRaceEnd();
+        if(roomStatus==='lobby'||roomStatus==='running'){roomStatus='ended';onRaceEnd()}
       }
     }else if(topic.startsWith(base+'/score/')){
       if(!data||!data.id||data.offline){
         if(data&&data.id){racePlayers.delete(data.id);renderLobbyPlayers()}
         return;
       }
-      racePlayers.set(data.id,{name:data.name||'玩家',score:data.score|0,scoreAt:data.scoreAt|0||data.ts|0,isHost:!!data.isHost});
+      racePlayers.set(data.id,{name:data.name||'玩家',score:data.score|0,scoreAt:Number(data.scoreAt)||Number(data.ts)||0,isHost:!!data.isHost});
       renderLobbyPlayers();
       if(data.id===myId)$('#raceScore').textContent=data.score|0;
     }
@@ -1616,7 +1645,7 @@ const boardPrev=new Map();
 function renderBoard(){
   const el=$('#raceBoard');if(!el)return;
   if(roomStatus!=='running'||!raceRunning()){el.hidden=true;return}
-  const cmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt|0,tb=b.scoreAt|0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
+  const cmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt||0,tb=b.scoreAt||0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
   const top=[...racePlayers.entries()].filter(([id,p])=>!p.isHost).map(([id,p])=>({id,...p})).sort(cmp).slice(0,3);
   if(!top.length){el.hidden=true;return}
   const M=['🥇','🥈','🥉'];
@@ -1626,7 +1655,7 @@ function renderBoard(){
   el.hidden=false}
 function renderLobbyPlayers(){
   const ul=$('#rlPlayers');if(!ul)return;
-  const rankCmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt|0,tb=b.scoreAt|0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
+  const rankCmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt||0,tb=b.scoreAt||0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
   const arr=[...racePlayers.values()].sort(rankCmp);
   renderBoard();
   ul.innerHTML=arr.map(p=>`<li style="padding:6px 0;border-bottom:1px solid var(--line)">${esc(p.name)}${p.isHost?' <small style="color:var(--muted)">房主</small>':''}　<strong>${p.score}</strong> 分</li>`).join('')||'<li style="color:var(--muted)">還沒有玩家</li>';
@@ -1641,10 +1670,10 @@ function showRoomLobby(){
 
 $('#rlStart').onclick=()=>{
   if(!roomHost||roomStatus!=='lobby')return;
-  const now=Date.now();
-  roomStartAt=now+3000;roomEndAt=roomStartAt+roomDuration*1000;roomStatus='running'; // 3 秒倒數後才開放題目
-  const state={code:roomCode,hostId:myId,hostName:myName,status:'running',durationSec:roomDuration,startAt:roomStartAt,endAt:roomEndAt,ts:now};
-  mqttClient.publish(roomTopic(),JSON.stringify(state),{qos:0,retain:true});
+  roomStartAt=Date.now()+5000;roomEndAt=roomStartAt+roomDuration*1000;roomStatus='running'; // 5 秒倒數後才開放題目（預留網路延遲）
+  mqttClient.publish(roomTopic(),JSON.stringify(roomState('running')),{qos:1,retain:true});
+  mqttClient.publish(roomTopic()+'/tick',JSON.stringify(roomState('running')),{qos:0,retain:false});
+  startHostTick();
   // 重置自己分數（房主不計分）
   raceScore=0;raceScoreAt=0;raceDone={};raceQ={};raceIslandPts={};publishRaceScore();
   onRaceStart();
@@ -1653,9 +1682,9 @@ $('#rlBack').onclick=()=>hideRoomOvs(); // 競賽中點主島看到房間視窗�
 $('#rlLeave').onclick=()=>{
   if(roomCode&&mqttClient){
     mqttClient.publish(scoreTopic(myId),JSON.stringify({id:myId,offline:true}),{qos:0,retain:true});
-    if(roomHost)mqttClient.publish(roomTopic(),JSON.stringify({code:roomCode,status:'ended',ts:Date.now()}),{qos:0,retain:true});
+    if(roomHost)mqttClient.publish(roomTopic(),JSON.stringify({code:roomCode,status:'ended',ts:Date.now()}),{qos:1,retain:true});
   }
-  stopRaceTimer();raceFx.stop(false);roomStatus='none';roomCode='';roomHost=false;
+  stopRaceTimer();stopHostTick();raceFx.stop(false);roomStatus='none';roomCode='';roomHost=false;
   $('#raceHud').hidden=true;$('#raceBoard').hidden=true;hideCd();hideRoomOvs();
 };
 
@@ -1684,12 +1713,12 @@ const raceFx=(()=>{
   function bass(t,f,len){const o=c.createOscillator(),fl=c.createBiquadFilter(),g=c.createGain();o.type='sawtooth';o.frequency.value=f;fl.type='lowpass';fl.frequency.value=420;env(g,t,.01,.45,len);o.connect(fl);fl.connect(g);g.connect(out);o.start(t);o.stop(t+len+.03)}
   function thump(t,f0,peak,dur){const o=c.createOscillator(),g=c.createGain();o.type='sine';o.frequency.setValueAtTime(f0,t);o.frequency.exponentialRampToValueAtTime(38,t+.16);env(g,t,.005,peak,dur||.24);o.connect(g);g.connect(out);o.start(t);o.stop(t+(dur||.24)+.03)}
   function hat(t){const s=c.createBufferSource(),fl=c.createBiquadFilter(),g=c.createGain();s.buffer=nbuf;fl.type='highpass';fl.frequency.value=7000;env(g,t,.002,.12,.05);s.connect(fl);fl.connect(g);g.connect(out);s.start(t)}
-  const left=()=>roomEndAt-Date.now();
+  const left=()=>roomEndAt-srvNow();
   function loop(){
     if(!running||!c)return;
     const now=c.currentTime;if(nbeat<now)nbeat=now+.05;
     if(!soundOn()){nbeat=now+.1;return}
-    if(Date.now()<roomStartAt)return; // 倒數階段只有上升音
+    if(srvNow()<roomStartAt)return; // 倒數階段只有上升音
     while(nbeat<now+.25){ // 最後 30 秒：心跳「咚咚」
       const l=left();if(l>30000){nbeat=now+.25;break}
       thump(nbeat,72,.95);thump(nbeat+.17,62,.65);nbeat+=l<10000?.5:.85}
@@ -1698,14 +1727,14 @@ const raceFx=(()=>{
     start(){
       if(running)return;running=true;next=0;nbeat=0;wantMusic=true;
       try{ctx();window.islandMusic&&islandMusic.duck();
-        const d=(roomStartAt-Date.now())/1000;
+        const d=(roomStartAt-srvNow())/1000;
         if(d>.4&&soundOn()){ // 倒數時的上升緊張音
           const t=c.currentTime,o=c.createOscillator(),fl=c.createBiquadFilter(),g=c.createGain();
           o.type='sawtooth';o.frequency.setValueAtTime(60,t);o.frequency.exponentialRampToValueAtTime(320,t+d);
           fl.type='lowpass';fl.frequency.setValueAtTime(200,t);fl.frequency.exponentialRampToValueAtTime(2200,t+d);
           g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.3,t+d);g.gain.linearRampToValueAtTime(0,t+d+.05);
           o.connect(fl);fl.connect(g);g.connect(out);o.start(t);o.stop(t+d+.1);riser=o}
-        if(Date.now()>=roomStartAt)playMusic(); // 中途加入：直接開始播
+        if(srvNow()>=roomStartAt)playMusic(); // 中途加入：直接開始播
         timer=setInterval(loop,80)}catch(e){running=false}
     },
     go(){ // GO!：低音重擊 + 畫面震動
@@ -1716,7 +1745,7 @@ const raceFx=(()=>{
     tick(l){ // 每 100ms 更新暗角：最後 30 秒泛紅、最後 10 秒急促閃爍
       if(wantMusic&&rm&&!rmBad){ // 越接近結束播放越快；音樂開關即時生效
         if(!soundOn()){if(!rm.paused)rm.pause()}
-        else if(Date.now()>=roomStartAt){
+        else if(srvNow()>=roomStartAt){
           if(rm.paused){rm.play().catch(()=>{});fadeRM(RACE_VOL,.6)}
           const r=l<=10000?1.12:l<=30000?1.06:1;if(r!==rate){rate=r;rm.playbackRate=r}}}
       const v=vig();if(!v)return;
@@ -1740,7 +1769,7 @@ function onRaceStart(){
   hideRoomOvs();closeQ();
   $('#raceHud').hidden=false;
   $('#raceScore').textContent=raceScore;
-  cdLast=-1;cdDone=Date.now()>=roomStartAt; // 中途加入的人不再倒數
+  cdLast=-1;cdDone=srvNow()>=roomStartAt; // 中途加入的人不再倒數
   stopRaceTimer();raceFx.start();
   raceTimer=setInterval(tickRace,100);
   tickRace();
@@ -1748,9 +1777,9 @@ function onRaceStart(){
 }
 function tickRace(){
   if(roomStatus!=='running')return;
-  const now=Date.now();
+  const now=srvNow();
   if(now<roomStartAt){ // 倒數中：題目尚未開放
-    const sec=Math.ceil((roomStartAt-now)/1000);
+    const sec=Math.min(5,Math.ceil((roomStartAt-now)/1000));
     $('#raceTime').textContent=fmtTime(roomEndAt-roomStartAt);
     $('#raceBoard').hidden=true;
     if(sec!==cdLast){cdLast=sec;showCd(String(sec),false,'準備好！題目馬上開放');beep(660,.18)}
@@ -1763,7 +1792,7 @@ function tickRace(){
   if(left<=0){
     // 房主負責結束廣播
     if(roomHost&&mqttClient){
-      mqttClient.publish(roomTopic(),JSON.stringify({code:roomCode,hostId:myId,hostName:myName,status:'ended',durationSec:roomDuration,startAt:roomStartAt,endAt:roomEndAt,ts:Date.now()}),{qos:0,retain:true});
+      mqttClient.publish(roomTopic(),JSON.stringify({code:roomCode,hostId:myId,hostName:myName,status:'ended',durationSec:roomDuration,startAt:roomStartAt,endAt:roomEndAt,ts:Date.now()}),{qos:1,retain:true});
     }
     onRaceEnd();
   }
@@ -1792,7 +1821,7 @@ function raceQCorrect(island,q){
   const pts=raceQPts(r.wrong);
   raceScore+=pts;
   raceIslandPts[island]=(raceIslandPts[island]||0)+pts;
-  raceScoreAt=Date.now();
+  raceScoreAt=srvNow();
   publishRaceScore();
   return pts;
 }
@@ -1808,9 +1837,9 @@ function raceOnIslandDone(islandIdx){
 
 function onRaceEnd(){
   if(roomStatus==='ended'&&$('#roomRank').classList.contains('on'))return;
-  roomStatus='ended';stopRaceTimer();raceFx.stop(true);$('#raceHud').hidden=true;$('#raceBoard').hidden=true;hideCd();boardPrev.clear();closeQ();
+  roomStatus='ended';stopRaceTimer();stopHostTick();raceFx.stop(true);$('#raceHud').hidden=true;$('#raceBoard').hidden=true;hideCd();boardPrev.clear();closeQ();
   // 排名（排除房主）
-  const rankCmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt|0,tb=b.scoreAt|0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
+  const rankCmp=(a,b)=>{const ds=(b.score|0)-(a.score|0);if(ds)return ds;const ta=a.scoreAt||0,tb=b.scoreAt||0;if(ta&&tb)return ta-tb;if(ta)return -1;if(tb)return 1;return 0};
   const ranked=[...racePlayers.values()].filter(p=>!p.isHost).sort(rankCmp);
   const all=[...racePlayers.values()].sort(rankCmp);
   $('#rkSub').textContent=ranked.length?`共 ${ranked.length} 位探險家參賽`:'本局沒有計分玩家（房主不計分）';
